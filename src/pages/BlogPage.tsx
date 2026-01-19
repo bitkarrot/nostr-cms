@@ -106,7 +106,7 @@ export default function BlogPage() {
         <div className="py-8">
           <div className="max-w-4xl mx-auto px-4 space-y-6">
             <div className="h-8 bg-muted rounded animate-pulse mb-6" />
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-6">
               {[...Array(6)].map((_, i) => (
                 <Card key={i}>
                   <CardHeader>
@@ -155,12 +155,12 @@ export default function BlogPage() {
 
           {/* Blog Posts */}
           {filteredPosts.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-6">
               {filteredPosts.map((post) => (
                 <Card key={post.id} className="hover:shadow-lg transition-shadow">
                   <CardHeader>
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg line-clamp-2">{post.title}</CardTitle>
+                      <CardTitle className="text-xl line-clamp-2">{post.title}</CardTitle>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Calendar className="h-4 w-4" />
                         {new Date(post.created_at * 1000).toLocaleDateString()}
@@ -169,14 +169,16 @@ export default function BlogPage() {
                   </CardHeader>
                   <CardContent>
                     <AuthorInfo pubkey={post.pubkey} />
-                    <div className="text-sm text-muted-foreground line-clamp-4 mb-4 prose prose-sm dark:prose-invert max-w-none">
+                    <div className="text-base text-muted-foreground line-clamp-3 mb-4 prose prose-sm dark:prose-invert max-w-none">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {post.content.slice(0, 200) + (post.content.length > 200 ? '...' : '')}
+                        {post.content.slice(0, 300) + (post.content.length > 300 ? '...' : '')}
                       </ReactMarkdown>
                     </div>
-                    <Button className="w-full" asChild>
-                      <Link to={`/blog/${post.id}`}>Read More</Link>
-                    </Button>
+                    <div className="flex justify-end">
+                      <Button asChild>
+                        <Link to={`/blog/${post.id}`}>Read More</Link>
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}

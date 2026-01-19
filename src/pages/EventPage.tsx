@@ -33,18 +33,35 @@ export default function EventPage() {
       if (events.length === 0) return null;
       
       const e = events[0];
+      const tags = e.tags || [];
+      const startTag = tags.find(([name]) => name === 'start')?.[1] || '0';
+      const endTag = tags.find(([name]) => name === 'end')?.[1];
+      
+      let start: number;
+      let end: number | undefined;
+
+      if (e.kind === 31922) {
+        // Date-based: YYYY-MM-DD
+        start = Math.floor(new Date(startTag).getTime() / 1000);
+        end = endTag ? Math.floor(new Date(endTag).getTime() / 1000) : undefined;
+      } else {
+        // Time-based: unix timestamp
+        start = parseInt(startTag);
+        end = endTag ? parseInt(endTag) : undefined;
+      }
+
       return {
         id: e.id,
         author: e.pubkey,
-        d: e.tags.find(([name]) => name === 'd')?.[1] || e.id,
-        title: e.tags.find(([name]) => name === 'title')?.[1] || 'Untitled Event',
-        summary: e.tags.find(([name]) => name === 'summary')?.[1] || '',
+        d: tags.find(([name]) => name === 'd')?.[1] || e.id,
+        title: tags.find(([name]) => name === 'title')?.[1] || 'Untitled Event',
+        summary: tags.find(([name]) => name === 'summary')?.[1] || '',
         description: e.content,
-        location: e.tags.find(([name]) => name === 'location')?.[1] || '',
-        start: parseInt(e.tags.find(([name]) => name === 'start')?.[1] || '0'),
-        end: e.tags.find(([name]) => name === 'end')?.[1] ? parseInt(e.tags.find(([name]) => name === 'end')![1]) : undefined,
-        status: e.tags.find(([name]) => name === 'status')?.[1] || 'confirmed',
-        image: e.tags.find(([name]) => name === 'image')?.[1] || '',
+        location: tags.find(([name]) => name === 'location')?.[1] || '',
+        start,
+        end,
+        status: tags.find(([name]) => name === 'status')?.[1] || 'confirmed',
+        image: tags.find(([name]) => name === 'image')?.[1] || '',
         kind: e.kind,
       };
     },
@@ -86,12 +103,6 @@ export default function EventPage() {
   }
 
   const isPast = event.end ? event.end * 1000 < Date.now() : event.start * 1000 < Date.now();
-
-  // Update meta when event is loaded
-  if (event) {
-    // Note: This is not ideal but needed for conditional hook usage
-    // In a real implementation, we'd handle this differently
-  }
 
   return (
     <div className="min-h-screen py-8">
@@ -154,7 +165,7 @@ export default function EventPage() {
             {/* Event Description */}
             {event.description && (
               <div className="prose prose-sm max-w-none">
-                <NoteContent event={{ content: event.description } as any} />
+                <NoteContent event={{ content: event.description, tags: [], kind: 1, created_at: 0, pubkey: '', id: '', sig: '' }} />
               </div>
             )}
           </CardContent>

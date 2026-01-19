@@ -286,16 +286,35 @@ const Index = () => {
         { kinds: [31922, 31923], limit: 50 }
       ], { signal });
       
-      return eventList.map(event => ({
-        id: event.id,
-        title: event.tags.find(([name]) => name === 'title')?.[1] || 'Untitled Event',
-        summary: event.tags.find(([name]) => name === 'summary')?.[1] || '',
-        location: event.tags.find(([name]) => name === 'location')?.[1] || '',
-        start: parseInt(event.tags.find(([name]) => name === 'start')?.[1] || '0'),
-        end: event.tags.find(([name]) => name === 'end')?.[1] ? parseInt(event.tags.find(([name]) => name === 'end')![1]) : undefined,
-        status: event.tags.find(([name]) => name === 'status')?.[1] || 'confirmed',
-        image: event.tags.find(([name]) => name === 'image')?.[1],
-      }));
+      return eventList.map(event => {
+        const tags = event.tags || [];
+        const startTag = tags.find(([name]) => name === 'start')?.[1] || '0';
+        const endTag = tags.find(([name]) => name === 'end')?.[1];
+        
+        let start: number;
+        let end: number | undefined;
+
+        if (event.kind === 31922) {
+          // Date-based: YYYY-MM-DD
+          start = Math.floor(new Date(startTag).getTime() / 1000);
+          end = endTag ? Math.floor(new Date(endTag).getTime() / 1000) : undefined;
+        } else {
+          // Time-based: unix timestamp
+          start = parseInt(startTag);
+          end = endTag ? parseInt(endTag) : undefined;
+        }
+
+        return {
+          id: event.id,
+          title: tags.find(([name]) => name === 'title')?.[1] || 'Untitled Event',
+          summary: tags.find(([name]) => name === 'summary')?.[1] || '',
+          location: tags.find(([name]) => name === 'location')?.[1] || '',
+          start,
+          end,
+          status: tags.find(([name]) => name === 'status')?.[1] || 'confirmed',
+          image: tags.find(([name]) => name === 'image')?.[1],
+        };
+      });
     },
   });
 

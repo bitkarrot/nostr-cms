@@ -72,6 +72,7 @@ export default function EventRSVP({ event }: EventRSVPProps) {
         ['a', `${event.kind}:${event.author}:${event.d}`],
         ['status', status],
         ['p', event.author],
+        ['alt', `RSVP ${status} for event: ${event.title}`],
       ];
 
       // If updating existing RSVP, include the event ID
@@ -80,9 +81,11 @@ export default function EventRSVP({ event }: EventRSVPProps) {
       }
 
       createEvent({
-        kind: 31925,
-        content: '', // Optional note
-        tags,
+        event: {
+          kind: 31925,
+          content: '', // Optional note
+          tags,
+        }
       });
 
       refetch();

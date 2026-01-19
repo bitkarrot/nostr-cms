@@ -66,14 +66,30 @@ export default function AdminEvents() {
       
       return events.map(event => {
         const tags = event.tags || [];
+        const startTag = tags.find(([name]) => name === 'start')?.[1] || '0';
+        const endTag = tags.find(([name]) => name === 'end')?.[1];
+        
+        let start: number;
+        let end: number | undefined;
+
+        if (event.kind === 31922) {
+          // Date-based: YYYY-MM-DD
+          start = Math.floor(new Date(startTag).getTime() / 1000);
+          end = endTag ? Math.floor(new Date(endTag).getTime() / 1000) : undefined;
+        } else {
+          // Time-based: unix timestamp
+          start = parseInt(startTag);
+          end = endTag ? parseInt(endTag) : undefined;
+        }
+
         return {
           id: event.id,
           title: tags.find(([name]) => name === 'title')?.[1] || 'Untitled Event',
           summary: tags.find(([name]) => name === 'summary')?.[1] || '',
           description: event.content,
           location: tags.find(([name]) => name === 'location')?.[1] || '',
-          start: parseInt(tags.find(([name]) => name === 'start')?.[1] || '0'),
-          end: tags.find(([name]) => name === 'end')?.[1] ? parseInt(tags.find(([name]) => name === 'end')![1]) : undefined,
+          start,
+          end,
           kind: event.kind as 31922 | 31923,
           status: tags.find(([name]) => name === 'status')?.[1] || 'confirmed',
           d: tags.find(([name]) => name === 'd')?.[1] || event.id,
@@ -87,60 +103,90 @@ export default function AdminEvents() {
     e.preventDefault();
     if (!user || !formData.title.trim()) return;
 
-    let startTimestamp: number;
-    let endTimestamp: number | undefined;
-    let eventKind: 31922 | 31923;
-
     if (eventType === 'date') {
       // Date-based event (kind 31922)
-      startTimestamp = new Date(formData.startDate).getTime() / 1000;
-      if (formData.endDate) {
-        endTimestamp = new Date(formData.endDate).getTime() / 1000;
+      // NIP-52: start/end tags must be in ISO 8601 format (YYYY-MM-DD)
+      const startDateStr = formData.startDate; // Already in YYYY-MM-DD from input type="date"
+      const endDateStr = formData.endDate || null;
+      
+      const tags = [
+        ['d', editingEvent?.d || `event-${Date.now()}`],
+        ['title', formData.title],
+        ['start', startDateStr],
+        ['status', formData.status],
+        ['alt', `Calendar event: ${formData.title}`],
+      ];
+
+      if (formData.summary.trim()) {
+        tags.push(['summary', formData.summary]);
       }
-      eventKind = 31922;
+
+      if (formData.location.trim()) {
+        tags.push(['location', formData.location]);
+      }
+
+      if (endDateStr) {
+        tags.push(['end', endDateStr]);
+      }
+
+      if (formData.image.trim()) {
+        tags.push(['image', formData.image]);
+      }
+
+      publishEvent({
+        event: {
+          kind: 31922,
+          content: formData.description,
+          tags,
+          created_at: Math.floor(Date.now() / 1000),
+        },
+        relays: selectedRelays,
+      });
     } else {
       // Time-based event (kind 31923)
       const startDateTime = new Date(`${formData.startDate}T${formData.startTime}`);
-      startTimestamp = startDateTime.getTime() / 1000;
+      const startTimestamp = Math.floor(startDateTime.getTime() / 1000);
+      let endTimestamp: number | undefined;
+      
       if (formData.endDate && formData.endTime) {
         const endDateTime = new Date(`${formData.endDate}T${formData.endTime}`);
-        endTimestamp = endDateTime.getTime() / 1000;
+        endTimestamp = Math.floor(endDateTime.getTime() / 1000);
       }
-      eventKind = 31923;
+
+      const tags = [
+        ['d', editingEvent?.d || `event-${Date.now()}`],
+        ['title', formData.title],
+        ['start', startTimestamp.toString()],
+        ['status', formData.status],
+        ['alt', `Calendar event: ${formData.title}`],
+      ];
+
+      if (formData.summary.trim()) {
+        tags.push(['summary', formData.summary]);
+      }
+
+      if (formData.location.trim()) {
+        tags.push(['location', formData.location]);
+      }
+
+      if (endTimestamp) {
+        tags.push(['end', endTimestamp.toString()]);
+      }
+
+      if (formData.image.trim()) {
+        tags.push(['image', formData.image]);
+      }
+
+      publishEvent({
+        event: {
+          kind: 31923,
+          content: formData.description,
+          tags,
+          created_at: Math.floor(Date.now() / 1000),
+        },
+        relays: selectedRelays,
+      });
     }
-
-    const tags = [
-      ['d', editingEvent?.d || `event-${Date.now()}`],
-      ['title', formData.title],
-      ['start', startTimestamp.toString()],
-      ['status', formData.status],
-    ];
-
-    if (formData.summary.trim()) {
-      tags.push(['summary', formData.summary]);
-    }
-
-    if (formData.location.trim()) {
-      tags.push(['location', formData.location]);
-    }
-
-    if (endTimestamp) {
-      tags.push(['end', endTimestamp.toString()]);
-    }
-
-    if (formData.image.trim()) {
-      tags.push(['image', formData.image]);
-    }
-
-    publishEvent({
-      event: {
-        kind: eventKind,
-        content: formData.description,
-        tags,
-        created_at: Math.floor(Date.now() / 1000),
-      },
-      relays: selectedRelays,
-    });
 
     // Reset form
     setFormData({
@@ -161,8 +207,19 @@ export default function AdminEvents() {
   };
 
   const handleEdit = (event: MeetupEvent) => {
-    const startDate = new Date(event.start * 1000);
-    const endDate = event.end ? new Date(event.end * 1000) : null;
+    let startDate: Date;
+    let endDate: Date | null = null;
+
+    if (event.kind === 31922) {
+      // For date-based events, we stored the timestamp in the local state 'start'
+      // but we need to recover the original date string from the event tags if possible,
+      // or just use the timestamp we have.
+      startDate = new Date(event.start * 1000);
+      if (event.end) endDate = new Date(event.end * 1000);
+    } else {
+      startDate = new Date(event.start * 1000);
+      if (event.end) endDate = new Date(event.end * 1000);
+    }
     
     setFormData({
       title: event.title,
