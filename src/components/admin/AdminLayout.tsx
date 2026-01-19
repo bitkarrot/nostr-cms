@@ -6,6 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { 
   LayoutDashboard, 
   FileText, 
+  FileCode,
   Calendar, 
   Settings, 
   Home,
@@ -17,6 +18,7 @@ const navigation = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
   { name: 'Blog Posts', href: '/admin/blog', icon: FileText },
   { name: 'Events', href: '/admin/events', icon: Calendar },
+  { name: 'Pages', href: '/admin/pages', icon: FileCode },
   { name: 'Site Settings', href: '/admin/settings', icon: Settings },
   { name: 'View Site', href: '/', icon: Home },
 ];

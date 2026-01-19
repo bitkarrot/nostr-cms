@@ -78,10 +78,10 @@ function AuthorInfo({ pubkey }: { pubkey: string }) {
 function HeroSection() {
   const { config } = useAppContext();
   
-  const heroConfig = config.siteConfig || {
-    title: 'Welcome to Our Community',
-    heroSubtitle: 'Join us for amazing meetups and events',
-    heroBackground: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1920&h=1080&fit=crop'
+  const heroConfig = {
+    heroTitle: config.siteConfig?.heroTitle || 'Welcome to Our Community',
+    heroSubtitle: config.siteConfig?.heroSubtitle || 'Join us for amazing meetups and events',
+    heroBackground: config.siteConfig?.heroBackground || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1920&h=1080&fit=crop'
   };
 
   return (
@@ -98,7 +98,7 @@ function HeroSection() {
       <div className="relative isolate flex items-center justify-center h-full">
         <div className="text-center px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6">
-            {heroConfig.title}
+            {heroConfig.heroTitle}
           </h1>
           <p className="text-xl sm:text-2xl text-white/90 mb-8 max-w-2xl mx-auto">
             {heroConfig.heroSubtitle}
@@ -343,6 +343,8 @@ const Index = () => {
   useSeoMeta({
     title: siteTitle,
     description: config.siteConfig?.heroSubtitle || 'Join us for amazing meetups and events',
+    ogImage: config.siteConfig?.ogImage,
+    twitterImage: config.siteConfig?.ogImage,
   });
 
   if (eventsLoading || postsLoading) {

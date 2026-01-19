@@ -1,5 +1,6 @@
 import { ReactNode, useEffect, useCallback, useMemo } from 'react';
 import { z } from 'zod';
+import { useHead, useSeoMeta } from '@unhead/react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { AppContext, type AppConfig, type AppContextType, type Theme, type RelayMetadata } from '@/contexts/AppContext';
 
@@ -110,6 +111,9 @@ export function AppProvider(props: AppProviderProps) {
     updateConfig,
   }), [config, updateConfig]);
 
+  // Apply global SEO meta tags
+  useGlobalSeo(config);
+
   // Apply theme effects to document
   useApplyTheme(config.theme);
 
@@ -118,6 +122,39 @@ export function AppProvider(props: AppProviderProps) {
       {children}
     </AppContext.Provider>
   );
+}
+
+/**
+ * Hook to apply global SEO meta tags based on site configuration
+ */
+function useGlobalSeo(config: AppConfig) {
+  const siteConfig = config.siteConfig;
+  
+  useHead({
+    link: [
+      {
+        key: 'favicon',
+        rel: 'icon',
+        href: siteConfig?.favicon || '/favicon.ico',
+      },
+    ],
+  });
+
+  const title = siteConfig?.title || 'My Meetup Site';
+  const description = siteConfig?.heroSubtitle || 'Join us for amazing meetups and events';
+  const ogImage = siteConfig?.ogImage || '';
+
+  useSeoMeta({
+    title,
+    description,
+    ogTitle: title,
+    ogDescription: description,
+    ogImage,
+    twitterCard: 'summary_large_image',
+    twitterTitle: title,
+    twitterDescription: description,
+    twitterImage: ogImage,
+  });
 }
 
 /**

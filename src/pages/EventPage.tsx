@@ -10,17 +10,13 @@ import { useQuery } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useDefaultRelay } from '@/hooks/useDefaultRelay';
+import { useAppContext } from '@/hooks/useAppContext';
 import { ArrowLeft, Calendar, MapPin, Clock } from 'lucide-react';
 
 export default function EventPage() {
   const { eventId } = useParams<{ eventId: string }>();
   const { nostr } = useDefaultRelay();
-
-  // Move useSeoMeta to top level but only use when we have data
-  useSeoMeta({
-    title: eventId ? 'Event' : 'Event Not Found',
-    description: 'Event details and RSVP information',
-  });
+  const { config } = useAppContext();
 
   const { data: event, isLoading } = useQuery({
     queryKey: ['event', eventId],
@@ -68,6 +64,14 @@ export default function EventPage() {
       };
     },
     enabled: !!eventId,
+  });
+
+  // Update SEO meta tags when event is loaded
+  useSeoMeta({
+    title: event ? `${event.title} - ${config.siteConfig?.title || 'Event'}` : 'Event',
+    description: event?.summary || 'Event details and RSVP information',
+    ogImage: event?.image || config.siteConfig?.ogImage,
+    twitterImage: event?.image || config.siteConfig?.ogImage,
   });
 
   if (!eventId) {

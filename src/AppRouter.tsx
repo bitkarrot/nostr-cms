@@ -10,6 +10,7 @@ import AdminWrapper from "./pages/admin/AdminWrapper";
 import AdminPage from "./pages/admin/AdminPage";
 import AdminBlogPage from "./pages/admin/AdminBlogPage";
 import AdminEventsPage from "./pages/admin/AdminEventsPage";
+import AdminPagesPage from "./pages/admin/AdminPagesPage";
 import AdminSettingsPage from "./pages/admin/AdminSettingsPage";
 import AdminLoginPage from "./pages/admin/AdminLoginPage";
 
@@ -18,6 +19,7 @@ import EventsPage from "./pages/EventsPage";
 import EventPage from "./pages/EventPage";
 import BlogPage from "./pages/BlogPage";
 import BlogPostPage from "./pages/BlogPostPage";
+import StaticPage from "./pages/StaticPage";
 
 function AdminRoutes() {
   return <AdminWrapper />;
@@ -34,11 +36,14 @@ export function AppRouter() {
         <Route path="/event/:eventId" element={<EventPage />} />
         <Route path="/blog" element={<BlogPage />} />
         <Route path="/blog/:postId" element={<BlogPostPage />} />
+        {/* Static pages (about, contact, etc.) */}
+        <Route path="/p/:path" element={<StaticPage />} />
         {/* Admin routes */}
         <Route path="/admin" element={<AdminRoutes />}>
           <Route index element={<AdminPage />} />
           <Route path="blog" element={<AdminBlogPage />} />
           <Route path="events" element={<AdminEventsPage />} />
+          <Route path="pages" element={<AdminPagesPage />} />
           <Route path="settings" element={<AdminSettingsPage />} />
         </Route>
         <Route path="/admin/login" element={<AdminLoginPage />} />

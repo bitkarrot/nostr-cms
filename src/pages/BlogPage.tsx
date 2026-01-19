@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQuery } from '@tanstack/react-query';
 import { useDefaultRelay } from '@/hooks/useDefaultRelay';
+import { useAppContext } from '@/hooks/useAppContext';
 import Navigation from '@/components/Navigation';
 import { Search, Calendar, Edit } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -94,9 +95,14 @@ export default function BlogPage() {
     )
   );
 
+  const { config } = useAppContext();
+  const siteTitle = config.siteConfig?.title || 'Community Meetup';
+
   useSeoMeta({
-    title: 'Blog - Community Meetup',
+    title: `Blog - ${siteTitle}`,
     description: 'Read our latest blog posts and community updates.',
+    ogImage: config.siteConfig?.ogImage,
+    twitterImage: config.siteConfig?.ogImage,
   });
 
   if (isLoading) {

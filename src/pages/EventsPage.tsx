@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQuery } from '@tanstack/react-query';
 import { useDefaultRelay } from '@/hooks/useDefaultRelay';
+import { useAppContext } from '@/hooks/useAppContext';
 import Navigation from '@/components/Navigation';
 import { Calendar, MapPin, Clock, Search, Filter } from 'lucide-react';
 
@@ -120,9 +121,14 @@ export default function EventsPage() {
     return event.end ? event.end * 1000 < now : event.start * 1000 < now;
   };
 
+  const { config: appContext } = useAppContext();
+  const siteTitle = appContext.siteConfig?.title || 'Community Meetup';
+
   useSeoMeta({
-    title: 'Events - Community Meetup',
+    title: `Events - ${siteTitle}`,
     description: 'Browse upcoming and past community events and meetups.',
+    ogImage: appContext.siteConfig?.ogImage,
+    twitterImage: appContext.siteConfig?.ogImage,
   });
 
   if (isLoading) {

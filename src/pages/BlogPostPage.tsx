@@ -11,6 +11,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { nip19 } from 'nostr-tools';
 import { useSeoMeta } from '@unhead/react';
+import { useAppContext } from '@/hooks/useAppContext';
 
 function AuthorInfo({ pubkey }: { pubkey: string }) {
   const { data: author } = useAuthor(pubkey);
@@ -57,6 +58,7 @@ function AuthorInfo({ pubkey }: { pubkey: string }) {
 export default function BlogPostPage() {
   const { postId } = useParams<{ postId: string }>();
   const { nostr } = useDefaultRelay();
+  const { config } = useAppContext();
 
   const { data: post, isLoading } = useQuery({
     queryKey: ['blog-post', postId],
@@ -81,8 +83,10 @@ export default function BlogPostPage() {
   });
 
   useSeoMeta({
-    title: post ? `${post.title} - Blog` : 'Blog Post',
+    title: post ? `${post.title} - ${config.siteConfig?.title || 'Blog'}` : 'Blog Post',
     description: post ? post.content.slice(0, 160) : 'Read this blog post on our community site.',
+    ogImage: post?.image || config.siteConfig?.ogImage,
+    twitterImage: post?.image || config.siteConfig?.ogImage,
   });
 
   if (isLoading) {

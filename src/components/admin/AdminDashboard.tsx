@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Calendar, Users, Eye } from 'lucide-react';
+import { FileText, Calendar } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { useDefaultRelay } from '@/hooks/useDefaultRelay';
 
@@ -44,18 +44,6 @@ export default function AdminDashboard() {
       icon: Calendar,
       description: 'Scheduled meetups',
     },
-    {
-      title: 'Total Views',
-      value: '1,234',
-      icon: Eye,
-      description: 'Page views this month',
-    },
-    {
-      title: 'Active Users',
-      value: '89',
-      icon: Users,
-      description: 'RSVPs and comments',
-    },
   ];
 
   return (
@@ -68,7 +56,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2">
         {stats.map((stat) => (
           <Card key={stat.title}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -134,8 +122,19 @@ export default function AdminDashboard() {
               {events?.slice(0, 5).map((event) => {
                 const tags = event.tags || [];
                 const title = tags.find(([name]) => name === 'title')?.[1] || 'Untitled Event';
-                const start = tags.find(([name]) => name === 'start')?.[1];
+                const startTag = tags.find(([name]) => name === 'start')?.[1];
                 const status = tags.find(([name]) => name === 'status')?.[1] || 'confirmed';
+                
+                let dateDisplay = 'No date';
+                if (startTag) {
+                  if (event.kind === 31922) {
+                    // Date-based: YYYY-MM-DD
+                    dateDisplay = new Date(startTag).toLocaleDateString();
+                  } else {
+                    // Time-based: unix timestamp
+                    dateDisplay = new Date(parseInt(startTag) * 1000).toLocaleDateString();
+                  }
+                }
                 
                 return (
                   <div key={event.id} className="flex items-center justify-between">
@@ -144,7 +143,7 @@ export default function AdminDashboard() {
                         {title}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {start ? new Date(parseInt(start) * 1000).toLocaleDateString() : 'No date'}
+                        {dateDisplay}
                       </p>
                     </div>
                     <Badge variant={status === 'confirmed' ? 'default' : 'secondary'}>
