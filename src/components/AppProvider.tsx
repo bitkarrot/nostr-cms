@@ -26,19 +26,19 @@ const AppConfigSchema = z.object({
   theme: z.enum(['dark', 'light', 'system']),
   relayMetadata: RelayMetadataSchema,
   siteConfig: z.object({
-    title: z.string(),
-    logo: z.string(),
-    favicon: z.string(),
-    ogImage: z.string(),
-    heroTitle: z.string(),
-    heroSubtitle: z.string(),
-    heroBackground: z.string(),
-    showEvents: z.boolean(),
-    showBlog: z.boolean(),
-    maxEvents: z.number(),
-    maxBlogPosts: z.number(),
-    defaultRelay: z.string(),
-    publishRelays: z.array(z.string()),
+    title: z.string().optional(),
+    logo: z.string().optional(),
+    favicon: z.string().optional(),
+    ogImage: z.string().optional(),
+    heroTitle: z.string().optional(),
+    heroSubtitle: z.string().optional(),
+    heroBackground: z.string().optional(),
+    showEvents: z.boolean().optional(),
+    showBlog: z.boolean().optional(),
+    maxEvents: z.number().optional(),
+    maxBlogPosts: z.number().optional(),
+    defaultRelay: z.string().optional(),
+    publishRelays: z.array(z.string()).optional(),
   }).optional(),
   navigation: z.array(z.object({
     id: z.string(),
@@ -80,7 +80,30 @@ export function AppProvider(props: AppProviderProps) {
     setConfig(updater);
   }, [setConfig]);
 
-  const config = useMemo(() => ({ ...defaultConfig, ...rawConfig }), [defaultConfig, rawConfig]);
+  const config = useMemo(() => {
+    // Start with defaultConfig
+    const merged = { ...defaultConfig };
+    
+    console.log('[AppProvider] rawConfig from localStorage:', rawConfig);
+
+    // Merge rawConfig (localStorage)
+    if (rawConfig.theme) merged.theme = rawConfig.theme;
+    if (rawConfig.relayMetadata) merged.relayMetadata = rawConfig.relayMetadata;
+    
+    // Deep merge siteConfig to ensure we don't lose defaults
+    if (defaultConfig.siteConfig || rawConfig.siteConfig) {
+      merged.siteConfig = {
+        ...(defaultConfig.siteConfig || {}),
+        ...(rawConfig.siteConfig || {}),
+      };
+    }
+    
+    // Use rawConfig navigation if it exists, otherwise defaultConfig
+    if (rawConfig.navigation) merged.navigation = rawConfig.navigation;
+    
+    console.log('[AppProvider] Final merged config:', merged);
+    return merged;
+  }, [defaultConfig, rawConfig]);
 
   const appContextValue: AppContextType = useMemo(() => ({
     config,

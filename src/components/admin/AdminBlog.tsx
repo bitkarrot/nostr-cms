@@ -5,11 +5,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { TipTapEditor } from '@/components/TipTapEditor';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useDefaultRelay } from '@/hooks/useDefaultRelay';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Layout } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useAuthor } from '@/hooks/useAuthor';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
 import { useQuery } from '@tanstack/react-query';
 
 interface BlogPost {
@@ -19,6 +24,29 @@ interface BlogPost {
   published: boolean;
   created_at: number;
   d: string;
+  pubkey: string;
+}
+
+function AuthorInfo({ pubkey }: { pubkey: string }) {
+  const { data: author } = useAuthor(pubkey);
+  const npub = pubkey ? (window as { nostrTools?: { nip19: { npubEncode: (pubkey: string) => string } } }).nostrTools?.nip19.npubEncode(pubkey) : '';
+
+  return (
+    <div className="flex items-center gap-2">
+      <Avatar className="h-5 w-5">
+        <AvatarImage src={author?.metadata?.picture} />
+        <AvatarFallback>{author?.metadata?.name?.charAt(0) || '?'}</AvatarFallback>
+      </Avatar>
+      <a 
+        href={`https://nostr.at/${npub}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-xs font-medium hover:underline"
+      >
+        {author?.metadata?.name || author?.metadata?.display_name || 'Anonymous'}
+      </a>
+    </div>
+  );
 }
 
 export default function AdminBlog() {
@@ -46,9 +74,10 @@ export default function AdminBlog() {
         id: event.id,
         title: event.tags.find(([name]) => name === 'title')?.[1] || 'Untitled',
         content: event.content,
-        published: event.tags.find(([name]) => name === 'published')?.[1] === 'true',
+        published: event.tags.find(([name]) => name === 'published')?.[1] === 'true' || !event.tags.find(([name]) => name === 'published'),
         created_at: event.created_at,
         d: event.tags.find(([name]) => name === 'd')?.[1] || event.id,
+        pubkey: event.pubkey,
       }));
     },
   });
@@ -56,6 +85,11 @@ export default function AdminBlog() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !formData.title.trim() || !formData.content.trim()) return;
+
+    if (editingPost && editingPost.pubkey !== user.pubkey) {
+      alert("You cannot edit another user's post.");
+      return;
+    }
 
     const tags = [
       ['d', editingPost?.d || `blog-${Date.now()}`],
@@ -87,6 +121,10 @@ export default function AdminBlog() {
   };
 
   const handleEdit = (post: BlogPost) => {
+    if (user && post.pubkey !== user.pubkey) {
+      alert("You cannot edit another user's post.");
+      return;
+    }
     setFormData({
       title: post.title,
       content: post.content,
@@ -97,6 +135,10 @@ export default function AdminBlog() {
   };
 
   const handleDelete = (post: BlogPost) => {
+    if (user && post.pubkey !== user.pubkey) {
+      alert("You cannot delete another user's post.");
+      return;
+    }
     if (confirm('Are you sure you want to delete this post?')) {
       // Create a deletion event (kind 5)
       createEvent({
@@ -142,13 +184,36 @@ export default function AdminBlog() {
               </div>
               
               <div>
-                <Label htmlFor="content">Content</Label>
-                <TipTapEditor
-                  content={formData.content}
-                  onChange={(content) => setFormData(prev => ({ ...prev, content }))}
-                  placeholder="Start writing your blog post..."
-                  className="mt-2"
-                />
+                <Label htmlFor="content">Content (Markdown)</Label>
+                <Tabs defaultValue="edit" className="mt-2">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="edit">
+                      <Layout className="h-4 w-4 mr-2" />
+                      Edit
+                    </TabsTrigger>
+                    <TabsTrigger value="preview">
+                      <Eye className="h-4 w-4 mr-2" />
+                      Preview
+                    </TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="edit" className="mt-2">
+                    <Textarea
+                      id="content"
+                      value={formData.content}
+                      onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
+                      placeholder="Write your post in Markdown..."
+                      className="min-h-[300px] font-mono"
+                      required
+                    />
+                  </TabsContent>
+                  <TabsContent value="preview" className="mt-2">
+                    <div className="min-h-[300px] p-4 border rounded-md prose prose-sm dark:prose-invert max-w-none">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {formData.content || "*Nothing to preview*"}
+                      </ReactMarkdown>
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </div>
 
               <div className="flex items-center space-x-2">
@@ -194,20 +259,25 @@ export default function AdminBlog() {
                       {post.published ? 'Published' : 'Draft'}
                     </Badge>
                   </div>
+                  <AuthorInfo pubkey={post.pubkey} />
                   <p className="text-sm text-muted-foreground line-clamp-2">
-                    {post.content.replace(/<[^>]*>/g, '').slice(0, 200)}...
+                    {post.content.replace(/[*#>`]/g, '').slice(0, 200)}...
                   </p>
                   <p className="text-xs text-muted-foreground">
                     Created: {new Date(post.created_at * 1000).toLocaleDateString()}
                   </p>
                 </div>
                 <div className="flex gap-2 ml-4">
-                  <Button variant="ghost" size="sm" onClick={() => handleEdit(post)}>
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleDelete(post)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  {user && post.pubkey === user.pubkey && (
+                    <>
+                      <Button variant="ghost" size="sm" onClick={() => handleEdit(post)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDelete(post)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             </CardContent>

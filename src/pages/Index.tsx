@@ -10,6 +10,10 @@ import { useDefaultRelay } from '@/hooks/useDefaultRelay';
 import { useQuery } from '@tanstack/react-query';
 import Navigation from '@/components/Navigation';
 import { Calendar, MapPin, Clock, ArrowRight, Edit } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useAuthor } from '@/hooks/useAuthor';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface Event {
   id: string;
@@ -29,6 +33,32 @@ interface BlogPost {
   published: boolean;
   created_at: number;
   image?: string;
+  pubkey: string;
+}
+
+function AuthorInfo({ pubkey }: { pubkey: string }) {
+  const { data: author } = useAuthor(pubkey);
+  // @ts-expect-error - window.nostrTools is injected
+  const npub = pubkey ? window.nostrTools?.nip19.npubEncode(pubkey) : '';
+
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      <Avatar className="h-6 w-6">
+        <AvatarImage src={author?.metadata?.picture} />
+        <AvatarFallback>{author?.metadata?.name?.charAt(0) || '?'}</AvatarFallback>
+      </Avatar>
+      <div className="flex flex-col">
+        <a 
+          href={`https://nostr.at/${npub}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs font-medium hover:underline"
+        >
+          {author?.metadata?.name || author?.metadata?.display_name || 'Anonymous'}
+        </a>
+      </div>
+    </div>
+  );
 }
 
 function HeroSection() {
@@ -196,12 +226,12 @@ function BlogSection({ posts }: { posts: BlogPost[] }) {
                   </p>
                 </CardHeader>
                 <CardContent>
-                  <div 
-                    className="text-sm text-muted-foreground line-clamp-3 mb-4"
-                    dangerouslySetInnerHTML={{ 
-                      __html: post.content.replace(/<[^>]*>/g, '').slice(0, 200) + '...' 
-                    }}
-                  />
+                  <AuthorInfo pubkey={post.pubkey} />
+                  <div className="text-sm text-muted-foreground line-clamp-3 mb-4 prose prose-sm dark:prose-invert">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {post.content.slice(0, 150) + (post.content.length > 150 ? '...' : '')}
+                    </ReactMarkdown>
+                  </div>
                   <Button className="w-full" asChild>
                     <Link to={`/blog/${post.id}`}>Read More</Link>
                   </Button>
@@ -268,8 +298,9 @@ const Index = () => {
         id: event.id,
         title: event.tags.find(([name]) => name === 'title')?.[1] || 'Untitled',
         content: event.content,
-        published: event.tags.find(([name]) => name === 'published')?.[1] === 'true',
+        published: event.tags.find(([name]) => name === 'published')?.[1] === 'true' || !event.tags.find(([name]) => name === 'published'),
         created_at: event.created_at,
+        pubkey: event.pubkey,
       }));
     },
   });

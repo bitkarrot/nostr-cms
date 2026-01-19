@@ -16,21 +16,21 @@ export interface AppConfig {
   relayMetadata: RelayMetadata;
   /** Site configuration */
   siteConfig?: {
-    title: string;
-    logo: string;
-    favicon: string;
-    ogImage: string;
-    heroTitle: string;
-    heroSubtitle: string;
-    heroBackground: string;
-    showEvents: boolean;
-    showBlog: boolean;
-    maxEvents: number;
-    maxBlogPosts: number;
+    title?: string;
+    logo?: string;
+    favicon?: string;
+    ogImage?: string;
+    heroTitle?: string;
+    heroSubtitle?: string;
+    heroBackground?: string;
+    showEvents?: boolean;
+    showBlog?: boolean;
+    maxEvents?: number;
+    maxBlogPosts?: number;
     /** Default relay for reading content */
-    defaultRelay: string;
+    defaultRelay?: string;
     /** Publishing relays for blasting content */
-    publishRelays: string[];
+    publishRelays?: string[];
   };
   /** Navigation configuration */
   navigation?: Array<{

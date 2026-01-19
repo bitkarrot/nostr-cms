@@ -98,7 +98,7 @@ export default function AdminDashboard() {
             <div className="space-y-4">
               {blogPosts?.slice(0, 5).map((post) => {
                 const title = post.tags.find(([name]) => name === 'title')?.[1] || 'Untitled';
-                const published = post.tags.find(([name]) => name === 'published')?.[1] === 'true';
+                const published = post.tags.find(([name]) => name === 'published')?.[1] === 'true' || !post.tags.find(([name]) => name === 'published');
                 
                 return (
                   <div key={post.id} className="flex items-center justify-between">

@@ -44,6 +44,30 @@ const defaultConfig: AppConfig = {
     ],
     updatedAt: 0,
   },
+  siteConfig: {
+    title: 'My Meetup Site',
+    logo: '',
+    favicon: '',
+    ogImage: '',
+    heroTitle: 'Welcome to Our Community',
+    heroSubtitle: 'Join us for amazing meetups and events',
+    heroBackground: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1920&h=1080&fit=crop',
+    showEvents: true,
+    showBlog: true,
+    maxEvents: 6,
+    maxBlogPosts: 3,
+    defaultRelay: import.meta.env.VITE_DEFAULT_RELAY || '',
+    publishRelays: Array.from(
+      (import.meta.env.VITE_PUBLISH_RELAYS || '').split(',').filter(Boolean)
+    ),
+  },
+  navigation: [
+    { id: '1', name: 'Home', href: '/', isSubmenu: false },
+    { id: '2', name: 'Events', href: '/events', isSubmenu: false },
+    { id: '3', name: 'Blog', href: '/blog', isSubmenu: false },
+    { id: '4', name: 'About', href: '/about', isSubmenu: false },
+    { id: '5', name: 'Contact', href: '/contact', isSubmenu: false },
+  ],
 };
 
 export function App() {

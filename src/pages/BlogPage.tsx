@@ -9,6 +9,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useDefaultRelay } from '@/hooks/useDefaultRelay';
 import Navigation from '@/components/Navigation';
 import { Search, Calendar, Edit } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useAuthor } from '@/hooks/useAuthor';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface BlogPost {
   id: string;
@@ -17,6 +21,31 @@ interface BlogPost {
   published: boolean;
   created_at: number;
   image?: string;
+  pubkey: string;
+}
+
+function AuthorInfo({ pubkey }: { pubkey: string }) {
+  const { data: author } = useAuthor(pubkey);
+  const npub = pubkey ? (window as { nostrTools?: { nip19: { npubEncode: (pubkey: string) => string } } }).nostrTools?.nip19.npubEncode(pubkey) : '';
+
+  return (
+    <div className="flex items-center gap-2 mb-4">
+      <Avatar className="h-6 w-6">
+        <AvatarImage src={author?.metadata?.picture} />
+        <AvatarFallback>{author?.metadata?.name?.charAt(0) || '?'}</AvatarFallback>
+      </Avatar>
+      <div className="flex flex-col">
+        <a 
+          href={`https://nostr.at/${npub}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs font-medium hover:underline"
+        >
+          {author?.metadata?.name || author?.metadata?.display_name || 'Anonymous'}
+        </a>
+      </div>
+    </div>
+  );
 }
 
 export default function BlogPage() {
@@ -35,9 +64,10 @@ export default function BlogPage() {
         id: event.id,
         title: event.tags.find(([name]) => name === 'title')?.[1] || 'Untitled',
         content: event.content,
-        published: event.tags.find(([name]) => name === 'published')?.[1] === 'true',
+        published: event.tags.find(([name]) => name === 'published')?.[1] === 'true' || !event.tags.find(([name]) => name === 'published'),
         created_at: event.created_at,
-      }));
+        pubkey: event.pubkey,
+      })) as BlogPost[];
     },
   });
 
@@ -123,12 +153,12 @@ export default function BlogPage() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div 
-                      className="text-sm text-muted-foreground line-clamp-4 mb-4"
-                      dangerouslySetInnerHTML={{ 
-                        __html: post.content.replace(/<[^>]*>/g, '').slice(0, 200) + '...' 
-                      }}
-                    />
+                    <AuthorInfo pubkey={post.pubkey} />
+                    <div className="text-sm text-muted-foreground line-clamp-4 mb-4 prose prose-sm dark:prose-invert">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {post.content.slice(0, 200) + (post.content.length > 200 ? '...' : '')}
+                      </ReactMarkdown>
+                    </div>
                     <Button className="w-full" asChild>
                       <Link to={`/blog/${post.id}`}>Read More</Link>
                     </Button>

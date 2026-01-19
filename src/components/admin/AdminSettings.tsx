@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,7 +37,7 @@ interface SiteConfig {
 }
 
 export default function AdminSettings() {
-  const { updateConfig } = useAppContext();
+  const { config, updateConfig } = useAppContext();
   const { mutate: createEvent } = useNostrPublish();
   const queryClient = useQueryClient();
   const { nostr } = useNostr();
@@ -45,31 +45,55 @@ export default function AdminSettings() {
   const [isSaving, setIsSaving] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const [navigation, setNavigation] = useState<NavigationItem[]>([
-    { id: '1', name: 'Home', href: '/', isSubmenu: false },
-    { id: '2', name: 'Events', href: '/events', isSubmenu: false },
-    { id: '3', name: 'Blog', href: '/blog', isSubmenu: false },
-    { id: '4', name: 'About', href: '/about', isSubmenu: false },
-    { id: '5', name: 'Contact', href: '/contact', isSubmenu: false },
-  ]);
+  const [navigation, setNavigation] = useState<NavigationItem[]>(() => 
+    config.navigation ?? [
+      { id: '1', name: 'Home', href: '/', isSubmenu: false },
+      { id: '2', name: 'Events', href: '/events', isSubmenu: false },
+      { id: '3', name: 'Blog', href: '/blog', isSubmenu: false },
+      { id: '4', name: 'About', href: '/about', isSubmenu: false },
+      { id: '5', name: 'Contact', href: '/contact', isSubmenu: false },
+    ]
+  );
 
   const [siteConfig, setSiteConfig] = useState<SiteConfig>(() => ({
-    title: 'My Meetup Site',
-    logo: '',
-    favicon: '',
-    ogImage: '',
-    heroTitle: 'Welcome to Our Community',
-    heroSubtitle: 'Join us for amazing meetups and events',
-    heroBackground: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1920&h=1080&fit=crop',
-    showEvents: true,
-    showBlog: true,
-    maxEvents: 6,
-    maxBlogPosts: 3,
-    defaultRelay: import.meta.env.VITE_DEFAULT_RELAY || '',
-    publishRelays: Array.from(
+    title: config.siteConfig?.title ?? 'My Meetup Site',
+    logo: config.siteConfig?.logo ?? '',
+    favicon: config.siteConfig?.favicon ?? '',
+    ogImage: config.siteConfig?.ogImage ?? '',
+    heroTitle: config.siteConfig?.heroTitle ?? 'Welcome to Our Community',
+    heroSubtitle: config.siteConfig?.heroSubtitle ?? 'Join us for amazing meetups and events',
+    heroBackground: config.siteConfig?.heroBackground ?? 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1920&h=1080&fit=crop',
+    showEvents: config.siteConfig?.showEvents ?? true,
+    showBlog: config.siteConfig?.showBlog ?? true,
+    maxEvents: config.siteConfig?.maxEvents ?? 6,
+    maxBlogPosts: config.siteConfig?.maxBlogPosts ?? 3,
+    defaultRelay: config.siteConfig?.defaultRelay ?? import.meta.env.VITE_DEFAULT_RELAY ?? '',
+    publishRelays: config.siteConfig?.publishRelays ?? Array.from(
       (import.meta.env.VITE_PUBLISH_RELAYS || '').split(',').filter(Boolean)
     ),
   }));
+
+  // Sync state with config when it changes (e.g. after loading from localStorage or Relay)
+  // but only if we're not currently saving or refreshing to avoid overwriting user input
+  useEffect(() => {
+    if (isSaving || isRefreshing) {
+      console.log('[AdminSettings] Skipping sync because isSaving/isRefreshing is true');
+      return;
+    }
+
+    if (config.siteConfig) {
+      console.log('[AdminSettings] Syncing form state with updated config:', config.siteConfig);
+      setSiteConfig(prev => ({
+        ...prev,
+        ...config.siteConfig,
+        // Ensure arrays are handled correctly if partial
+        publishRelays: config.siteConfig?.publishRelays ?? prev.publishRelays,
+      }) as SiteConfig);
+    }
+    if (config.navigation) {
+      setNavigation(config.navigation);
+    }
+  }, [config.siteConfig, config.navigation, isSaving, isRefreshing]);
 
   // Load existing site configuration from NIP-78 kind 30078
   const handleLoadConfig = async () => {
@@ -89,31 +113,48 @@ export default function AdminSettings() {
 
       if (events.length > 0) {
         const event = events[0];
-        const loadedConfig = {
-          title: event.tags.find(([name]) => name === 'title')?.[1] || 'My Meetup Site',
-          logo: event.tags.find(([name]) => name === 'logo')?.[1] || '',
-          favicon: event.tags.find(([name]) => name === 'favicon')?.[1] || '',
-          ogImage: event.tags.find(([name]) => name === 'og_image')?.[1] || '',
-          heroTitle: event.tags.find(([name]) => name === 'hero_title')?.[1] || 'Welcome to Our Community',
-          heroSubtitle: event.tags.find(([name]) => name === 'hero_subtitle')?.[1] || 'Join us for amazing meetups and events',
-          heroBackground: event.tags.find(([name]) => name === 'hero_background')?.[1] || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1920&h=1080&fit=crop',
-          showEvents: event.tags.find(([name]) => name === 'show_events')?.[1] === 'true',
-          showBlog: event.tags.find(([name]) => name === 'show_blog')?.[1] === 'true',
-          maxEvents: parseInt(event.tags.find(([name]) => name === 'max_events')?.[1] || '6'),
-          maxBlogPosts: parseInt(event.tags.find(([name]) => name === 'max_blog_posts')?.[1] || '3'),
-          defaultRelay: event.tags.find(([name]) => name === 'default_relay')?.[1] || import.meta.env.VITE_DEFAULT_RELAY,
-          publishRelays: (() => {
-            const relaysTag = event.tags.find(([name]) => name === 'publish_relays')?.[1];
-            const defaultRelays = (import.meta.env.VITE_PUBLISH_RELAYS || '').split(',').filter(Boolean);
-            if (!relaysTag) return defaultRelays;
-            try {
-              const parsed = JSON.parse(relaysTag);
-              return Array.isArray(parsed) ? parsed : defaultRelays;
-            } catch {
-              return defaultRelays;
-            }
-          })(),
+        const loadedConfig: Partial<SiteConfig> = {};
+        
+        const tags = {
+          title: 'title',
+          logo: 'logo',
+          favicon: 'favicon',
+          ogImage: 'og_image',
+          heroTitle: 'hero_title',
+          heroSubtitle: 'hero_subtitle',
+          heroBackground: 'hero_background',
+          defaultRelay: 'default_relay'
         };
+
+        Object.entries(tags).forEach(([key, tagName]) => {
+          const val = event.tags.find(([name]) => name === tagName)?.[1];
+          if (val !== undefined) {
+            (loadedConfig as Record<string, string | boolean | number | string[] | undefined>)[key] = val;
+          }
+        });
+
+        // Handle booleans and numbers separately
+        const showEvents = event.tags.find(([name]) => name === 'show_events')?.[1];
+        if (showEvents !== undefined) loadedConfig.showEvents = showEvents === 'true';
+        
+        const showBlog = event.tags.find(([name]) => name === 'show_blog')?.[1];
+        if (showBlog !== undefined) loadedConfig.showBlog = showBlog === 'true';
+        
+        const maxEvents = event.tags.find(([name]) => name === 'max_events')?.[1];
+        if (maxEvents !== undefined) loadedConfig.maxEvents = parseInt(maxEvents);
+        
+        const maxBlogPosts = event.tags.find(([name]) => name === 'max_blog_posts')?.[1];
+        if (maxBlogPosts !== undefined) loadedConfig.maxBlogPosts = parseInt(maxBlogPosts);
+
+        const relaysTag = event.tags.find(([name]) => name === 'publish_relays')?.[1];
+        if (relaysTag) {
+          try {
+            const parsed = JSON.parse(relaysTag);
+            if (Array.isArray(parsed)) loadedConfig.publishRelays = parsed;
+          } catch (e) {
+            console.error('Failed to parse publish_relays tag', e);
+          }
+        }
 
         // Also load navigation from content
         let loadedNavigation: NavigationItem[] = [];
@@ -128,13 +169,19 @@ export default function AdminSettings() {
           // Use default navigation
         }
 
-        setSiteConfig(loadedConfig);
+        setSiteConfig(prev => ({
+          ...prev,
+          ...loadedConfig
+        }) as SiteConfig);
         setNavigation(loadedNavigation);
         
         // Update local app config immediately
         updateConfig((currentConfig) => ({
           ...currentConfig,
-          siteConfig: loadedConfig,
+          siteConfig: {
+            ...(currentConfig.siteConfig || {}),
+            ...loadedConfig,
+          },
           navigation: loadedNavigation,
         }));
 
@@ -152,6 +199,7 @@ export default function AdminSettings() {
     setIsSaving(true);
     try {
       // Save site configuration as a replaceable event (kind 30078) following NIP-78
+      console.log('Saving config to Nostr and local context...', siteConfig);
       const configTags = [
         ['d', 'nostr-meetup-site-config'],
         ['title', siteConfig.title],
@@ -176,9 +224,13 @@ export default function AdminSettings() {
       });
 
       // Update local app config
+      console.log('Updating AppContext with:', siteConfig);
       updateConfig((currentConfig) => ({
         ...currentConfig,
-        siteConfig,
+        siteConfig: {
+          ...(currentConfig.siteConfig || {}),
+          ...siteConfig,
+        },
         navigation,
       }));
 
