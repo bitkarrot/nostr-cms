@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { nip19 } from 'nostr-tools';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useDefaultRelay } from '@/hooks/useDefaultRelay';
-import { Plus, Edit, Trash2, Eye, Layout } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Plus, Edit, Trash2, Eye, Layout, Share2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuthor } from '@/hooks/useAuthor';
 import ReactMarkdown from 'react-markdown';
@@ -65,16 +66,24 @@ function AuthorInfo({ pubkey }: { pubkey: string }) {
 }
 
 export default function AdminBlog() {
-  const { nostr } = useDefaultRelay();
+  const { nostr, publishRelays: initialPublishRelays } = useDefaultRelay();
   const { user } = useCurrentUser();
-  const { mutate: createEvent } = useNostrPublish();
+  const { mutate: publishEvent } = useNostrPublish();
   const [isCreating, setIsCreating] = useState(false);
   const [editingPost, setEditingPost] = useState<BlogPost | null>(null);
+  const [selectedRelays, setSelectedRelays] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     title: '',
     content: '',
     published: false,
   });
+
+  // Initialize selected relays when publishRelays change
+  useEffect(() => {
+    if (initialPublishRelays.length > 0 && selectedRelays.length === 0) {
+      setSelectedRelays(initialPublishRelays);
+    }
+  }, [initialPublishRelays, selectedRelays.length]);
 
   // Fetch blog posts
   const { data: posts, refetch } = useQuery({
@@ -114,17 +123,23 @@ export default function AdminBlog() {
 
     if (editingPost) {
       // Update existing post
-      createEvent({
-        kind: 30023,
-        content: formData.content,
-        tags,
+      publishEvent({
+        event: {
+          kind: 30023,
+          content: formData.content,
+          tags,
+        },
+        relays: selectedRelays,
       });
     } else {
       // Create new post
-      createEvent({
-        kind: 30023,
-        content: formData.content,
-        tags,
+      publishEvent({
+        event: {
+          kind: 30023,
+          content: formData.content,
+          tags,
+        },
+        relays: selectedRelays,
       });
     }
 
@@ -156,9 +171,12 @@ export default function AdminBlog() {
     }
     if (confirm('Are you sure you want to delete this post?')) {
       // Create a deletion event (kind 5)
-      createEvent({
-        kind: 5,
-        tags: [['e', post.id]],
+      publishEvent({
+        event: {
+          kind: 5,
+          tags: [['e', post.id]],
+        },
+        relays: selectedRelays,
       });
       refetch();
     }
@@ -238,6 +256,41 @@ export default function AdminBlog() {
                   onCheckedChange={(checked) => setFormData(prev => ({ ...prev, published: checked }))}
                 />
                 <Label htmlFor="published">Publish immediately</Label>
+              </div>
+
+              {/* Relay Selection */}
+              <div className="space-y-3 pt-4 border-t">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Share2 className="h-4 w-4" />
+                  Publishing Relays
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {initialPublishRelays.map((relay) => (
+                    <div key={relay} className="flex items-center space-x-2 bg-muted/30 p-2 rounded-md border">
+                      <Checkbox 
+                        id={`relay-${relay}`} 
+                        checked={selectedRelays.includes(relay)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedRelays(prev => [...prev, relay]);
+                          } else {
+                            setSelectedRelays(prev => prev.filter(r => r !== relay));
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor={`relay-${relay}`}
+                        className="text-xs font-mono truncate cursor-pointer flex-1"
+                        title={relay}
+                      >
+                        {relay.replace('wss://', '').replace('ws://', '')}
+                      </label>
+                    </div>
+                  ))}
+                  {initialPublishRelays.length === 0 && (
+                    <p className="text-xs text-muted-foreground italic">No publishing relays configured.</p>
+                  )}
+                </div>
               </div>
 
               <div className="flex gap-2">

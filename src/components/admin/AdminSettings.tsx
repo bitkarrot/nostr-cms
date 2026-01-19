@@ -38,7 +38,7 @@ interface SiteConfig {
 
 export default function AdminSettings() {
   const { config, updateConfig } = useAppContext();
-  const { mutate: createEvent } = useNostrPublish();
+  const { mutate: publishEvent } = useNostrPublish();
   const queryClient = useQueryClient();
   const { nostr } = useNostr();
   const { user } = useCurrentUser();
@@ -217,10 +217,12 @@ export default function AdminSettings() {
         ['publish_relays', JSON.stringify(siteConfig.publishRelays)],
       ];
 
-      createEvent({
-        kind: 30078,
-        content: JSON.stringify({ navigation }),
-        tags: configTags,
+      publishEvent({
+        event: {
+          kind: 30078,
+          content: JSON.stringify({ navigation }),
+          tags: configTags,
+        }
       });
 
       // Update local app config

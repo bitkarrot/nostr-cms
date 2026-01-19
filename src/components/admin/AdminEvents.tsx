@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,8 @@ import { TipTapEditor } from '@/components/TipTapEditor';
 import { useNostrPublish } from '@/hooks/useNostrPublish';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useDefaultRelay } from '@/hooks/useDefaultRelay';
-import { Plus, Edit, Trash2, Calendar, MapPin } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Plus, Edit, Trash2, Calendar, MapPin, Share2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
 interface MeetupEvent {
@@ -27,12 +28,13 @@ interface MeetupEvent {
 }
 
 export default function AdminEvents() {
-  const { nostr } = useDefaultRelay();
+  const { nostr, publishRelays: initialPublishRelays } = useDefaultRelay();
   const { user } = useCurrentUser();
-  const { mutate: createEvent } = useNostrPublish();
+  const { mutate: publishEvent } = useNostrPublish();
   const [isCreating, setIsCreating] = useState(false);
   const [editingEvent, setEditingEvent] = useState<MeetupEvent | null>(null);
   const [eventType, setEventType] = useState<'date' | 'time'>('time');
+  const [selectedRelays, setSelectedRelays] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     title: '',
     summary: '',
@@ -45,6 +47,13 @@ export default function AdminEvents() {
     image: '',
     status: 'confirmed',
   });
+
+  // Initialize selected relays
+  useEffect(() => {
+    if (initialPublishRelays.length > 0 && selectedRelays.length === 0) {
+      setSelectedRelays(initialPublishRelays);
+    }
+  }, [initialPublishRelays, selectedRelays.length]);
 
   // Fetch events
   const { data: events, refetch } = useQuery({
@@ -120,10 +129,14 @@ export default function AdminEvents() {
       tags.push(['image', formData.image]);
     }
 
-    createEvent({
-      kind: eventKind,
-      content: formData.description,
-      tags,
+    publishEvent({
+      event: {
+        kind: eventKind,
+        content: formData.description,
+        tags,
+        created_at: Math.floor(Date.now() / 1000),
+      },
+      relays: selectedRelays,
     });
 
     // Reset form
@@ -167,9 +180,14 @@ export default function AdminEvents() {
 
   const handleDelete = (event: MeetupEvent) => {
     if (confirm('Are you sure you want to delete this event?')) {
-      createEvent({
-        kind: 5,
-        tags: [['e', event.id]],
+      publishEvent({
+        event: {
+          kind: 5,
+          content: '',
+          tags: [['e', event.id]],
+          created_at: Math.floor(Date.now() / 1000),
+        },
+        relays: selectedRelays,
       });
       refetch();
     }
@@ -312,6 +330,41 @@ export default function AdminEvents() {
                   placeholder="Event details and description..."
                   className="mt-2"
                 />
+              </div>
+
+              {/* Relay Selection */}
+              <div className="space-y-3 pt-4 border-t">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Share2 className="h-4 w-4" />
+                  Publishing Relays
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {initialPublishRelays.map((relay) => (
+                    <div key={relay} className="flex items-center space-x-2 bg-muted/30 p-2 rounded-md border">
+                      <Checkbox 
+                        id={`relay-${relay}`} 
+                        checked={selectedRelays.includes(relay)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedRelays(prev => [...prev, relay]);
+                          } else {
+                            setSelectedRelays(prev => prev.filter(r => r !== relay));
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor={`relay-${relay}`}
+                        className="text-xs font-mono truncate cursor-pointer flex-1"
+                        title={relay}
+                      >
+                        {relay.replace('wss://', '').replace('ws://', '')}
+                      </label>
+                    </div>
+                  ))}
+                  {initialPublishRelays.length === 0 && (
+                    <p className="text-xs text-muted-foreground italic">No publishing relays configured.</p>
+                  )}
+                </div>
               </div>
 
               <div className="flex gap-2">
