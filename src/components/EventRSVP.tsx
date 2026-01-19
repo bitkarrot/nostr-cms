@@ -44,16 +44,22 @@ export default function EventRSVP({ event }: EventRSVPProps) {
         {
           kinds: [31925],
           '#a': [`${event.kind}:${event.author}:${event.d}`],
-          limit: 100
         }
       ], { signal });
       
-      return events.map(rsvp => ({
-        pubkey: rsvp.pubkey,
-        status: rsvp.tags.find(([name]) => name === 'status')?.[1] as 'accepted' | 'declined' | 'tentative' || 'tentative',
-        created_at: rsvp.created_at,
-        content: rsvp.content,
-      }));
+      const rsvpMap = new Map<string, RSVP>();
+      
+      // Sort by created_at ascending so that later events overwrite earlier ones in the map
+      events.sort((a, b) => a.created_at - b.created_at).forEach(rsvp => {
+        rsvpMap.set(rsvp.pubkey, {
+          pubkey: rsvp.pubkey,
+          status: rsvp.tags.find(([name]) => name === 'status')?.[1] as 'accepted' | 'declined' | 'tentative' || 'tentative',
+          created_at: rsvp.created_at,
+          content: rsvp.content,
+        });
+      });
+      
+      return Array.from(rsvpMap.values());
     },
   });
 
@@ -256,6 +262,22 @@ export default function EventRSVP({ event }: EventRSVPProps) {
           <CardContent>
             <div className="space-y-3">
               {tentativeRSVPs.map((rsvp) => (
+                <Attendee key={rsvp.pubkey} pubkey={rsvp.pubkey} rsvp={rsvp} />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Declined Attendees */}
+      {declinedRSVPs.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Can't Go ({declinedRSVPs.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {declinedRSVPs.map((rsvp) => (
                 <Attendee key={rsvp.pubkey} pubkey={rsvp.pubkey} rsvp={rsvp} />
               ))}
             </div>
