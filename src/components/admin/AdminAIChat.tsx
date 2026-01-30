@@ -450,7 +450,7 @@ const AdminAIChat = () => {
               <Bot className="w-16 h-16 text-muted-foreground" />
               <h3 className="text-lg font-semibold">Sign in to start chatting</h3>
               <p className="text-sm text-muted-foreground text-center max-w-md">
-                Puter.com is a cloud-based OS that powers this AI functionality.
+                Puter.com is a privacy first personal cloud-based OS that powers this AI functionality.
                 Signing in allows you to access the AI chat features securely.
                 It's free and helps maintain your chat history.
               </p>
