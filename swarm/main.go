@@ -206,8 +206,11 @@ func main() {
 		return false, "" // allow
 	})
 
-	// Setup front page handler
-	setupFrontPageHandler(relay, config)
+	// Setup front page handler (only if Nostr-CMS frontend is not serving at root)
+	// This prevents route conflict when both try to register "/"
+	if !config.ServeFrontend || config.FrontendBasePath != "/" {
+		setupFrontPageHandler(relay, config)
+	}
 
 	// Setup dashboard handlers
 	setupDashboardHandlers(relay, config)

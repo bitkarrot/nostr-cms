@@ -6,8 +6,8 @@ Quick guide for running Nostr-CMS + Swarm Relay locally without Docker.
 
 | Mode | Command | Frontend URL | Relay URL |
 |------|---------|--------------|-----------|
-| **Separated** (Recommended for dev) | `npm run dev` + `cd swarm && go run main.go` | http://localhost:8080 | ws://localhost:3334 |
-| **Combined** | `npm run build:embedded` + `cd swarm && go run main.go` | http://localhost:3334 | ws://localhost:3334 |
+| **Separated** (Recommended for dev) | `npm run dev` + `cd swarm && go run . ` | http://localhost:8080 | ws://localhost:3334 |
+| **Combined** | `npm run build:embedded` + `cd swarm && go run . ` | http://localhost:3334 | ws://localhost:3334 |
 
 ---
 
@@ -56,7 +56,7 @@ RELAY_PUBKEY=your_pubkey_here
 **Terminal 1: Start Relay**
 ```bash
 cd swarm
-go run main.go
+go run . 
 ```
 
 Output:
@@ -136,7 +136,7 @@ EOF
 **With Embedded Frontend (Static Build):**
 ```bash
 cd swarm
-go run main.go
+go run . 
 ```
 
 **With Live Frontend (Hot Reload):**
@@ -148,7 +148,7 @@ npm run build -- --watch
 cd swarm
 export SERVE_FRONTEND=true
 export FRONTEND_PATH=../dist
-go run main.go
+go run .
 ```
 
 ### Access
@@ -175,20 +175,20 @@ go run main.go
 ### Making Relay Changes
 
 1. Edit files in `swarm/`
-2. Restart relay: `cd swarm && go run main.go`
+2. Restart relay: `cd swarm && go run . `
 
 ### Testing Both Modes
 
 ```bash
 # Test separated mode first (hot reload)
 npm run dev  # Terminal 1
-cd swarm && go run main.go  # Terminal 2
+cd swarm && go run .   # Terminal 2
 
 # Then test combined mode
 npm run build:embedded
 cd swarm
 export SERVE_FRONTEND=true
-go run main.go
+go run . 
 ```
 
 ---
@@ -257,7 +257,7 @@ npm run test         # Run tests
 ### Relay
 ```bash
 cd swarm
-go run main.go       # Start relay (port 3334)
+go run .        # Start relay (port 3334)
 go build             # Build binary
 ./swarm              # Run built binary
 ```
@@ -276,7 +276,7 @@ psql $DATABASE_URL   # Connect to database
 ```bash
 # Relay logs
 cd swarm
-go run main.go 2>&1 | tee relay.log
+go run .  2>&1 | tee relay.log
 
 # Frontend logs
 npm run dev 2>&1 | tee frontend.log

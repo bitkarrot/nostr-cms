@@ -37,7 +37,7 @@ npm run build:embedded
 cd swarm
 export SERVE_FRONTEND=true
 export VITE_DEFAULT_RELAY=ws://localhost:3334
-go run main.go
+go run .
 ```
 
 Access at: `http://localhost:3334`
@@ -60,7 +60,7 @@ Run frontend and relay as separate services for independent scaling and developm
 ```bash
 # Terminal 1: Run relay
 cd swarm
-go run main.go
+go run .
 
 # Terminal 2: Run frontend
 npm run dev
@@ -215,7 +215,7 @@ For active frontend development with hot reload:
 **Terminal 1: Start Relay**
 ```bash
 cd swarm
-go run main.go
+go run .
 ```
 
 **Terminal 2: Start Frontend**
@@ -241,7 +241,7 @@ cd swarm
 export SERVE_FRONTEND=true
 export VITE_DEFAULT_RELAY=ws://localhost:3334
 export FRONTEND_PATH=../dist  # Use local files for testing
-go run main.go
+go run .
 ```
 
 Access at `http://localhost:3334`
@@ -255,7 +255,7 @@ npm run build -- --watch
 cd swarm
 export SERVE_FRONTEND=true
 export FRONTEND_PATH=../dist
-go run main.go
+go run .
 ```
 
 Changes to `dist/` will be reflected on refresh (no need to rebuild Go binary).
@@ -324,7 +324,7 @@ export VITE_MASTER_PUBKEY=your_pubkey_here
 
 3. Run the relay:
 ```bash
-go run main.go
+go run .
 ```
 
 Access at: `http://localhost:3334` (or your configured domain)
@@ -343,7 +343,7 @@ docker compose -f docker-compose.combined.yml up -d --build
 1. Start the relay:
 ```bash
 cd swarm
-go run main.go
+go run .
 ```
 
 2. In a new terminal, start the frontend:

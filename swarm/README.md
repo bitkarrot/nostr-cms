@@ -2,7 +2,7 @@
 
 [![Deployed on Zeabur](https://zeabur.com/deployed-on-zeabur-dark.svg)](https://zeabur.com/referral?referralCode=bitkarrot&utm_source=bitkarrot&utm_campaign=oss)
 
-This relay software provides a Nostr relay to a team.  This is a fork of the bitvora [team-relay](https://github.com/bitvora/team-relay) with  modifications for Swarm.hivetalk.org 
+This relay software provides a Nostr relay to a team.  This is a fork of the bitvora [team-relay](https://github.com/bitvora/team-relay) with  modifications for Swarm 
 
 In the .env file, the team domain is used to reject non team members, only members in nostr.json are allowed for the specified team domain.
 
@@ -108,8 +108,8 @@ Swarm includes comprehensive rate limiting and spam protection:
     RELAY_PUBKEY="8ad8f1f78c8e11966242e28a7ca15c936b23a999d5fb91bfe4e4472e2d6eaf55"
     RELAY_DESCRIPTION="Swarm Hivetalk Team Relay"
     
-    TEAM_DOMAIN="swarm.hivetalk.org" # Optional: Domain where the relay / site is served
-    NPUB_DOMAIN="hivetalk.org" # Optional: Domain that hosts .well-known/nostr.json (falls back to public/.well-known/nostr.json if not set)
+    TEAM_DOMAIN="yourdomain.com" # Optional: Domain where the relay / site is served
+    NPUB_DOMAIN="domain.org" # Optional: Domain that hosts .well-known/nostr.json (falls back to public/.well-known/nostr.json if not set)
     
     DB_ENGINE="postgres"
     # DB_ENGINE="badger" # lmdb, badger, postgres (default: postgres)
