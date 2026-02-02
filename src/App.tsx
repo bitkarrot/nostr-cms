@@ -34,18 +34,15 @@ const queryClient = new QueryClient({
 });
 
 const DEFAULT_PUBLISH_RELAYS = [
-  import.meta.env.VITE_DEFAULT_RELAY,
   'wss://relay.damus.io',
   'wss://relay.primal.net',
   'wss://nos.lol'
-].filter(Boolean);
+];
 
 const defaultConfig: AppConfig = {
   theme: "light",
   relayMetadata: {
-    relays: [
-      { url: import.meta.env.VITE_DEFAULT_RELAY, read: true, write: true },
-    ],
+    relays: [],
     updatedAt: 0,
   },
   siteConfig: {
@@ -62,8 +59,6 @@ const defaultConfig: AppConfig = {
     feedReadFromPublishRelays: false,
     maxEvents: 6,
     maxBlogPosts: 3,
-    defaultRelay: import.meta.env.VITE_DEFAULT_RELAY,
-    publishRelays: DEFAULT_PUBLISH_RELAYS,
   },
   navigation: [
     { id: '2', name: 'Events', href: '/events', isSubmenu: false },
@@ -73,6 +68,9 @@ const defaultConfig: AppConfig = {
     { id: '5', name: 'Contact', href: '/contact', isSubmenu: false },
   ],
 };
+
+// Export for use in hooks
+export { DEFAULT_PUBLISH_RELAYS };
 
 export function App() {
   return (
