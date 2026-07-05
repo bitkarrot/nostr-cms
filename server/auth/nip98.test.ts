@@ -169,3 +169,85 @@ describe('NIP-98 verification — 01-02-01 accept/reject matrix (T-01-02)', () =
     expect(res.status).toBe(401);
   });
 });
+
+describe('NIP-98 verification — 01-02-02 remaining reject paths (T-01-02)', () => {
+  beforeEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('expired event (>60s) -> 401', async () => {
+    const app = buildApp(masterResolver);
+    // created_at 61 seconds in the past -> age >= 60000ms -> NIP98.verify throws.
+    const token = signToken(
+      buildTemplate(PUBLIC_URL, 'GET', Math.floor(Date.now() / 1000) - 61),
+      MASTER_SK,
+    );
+    const res = await req(app, 'GET', '/api/email/admin/ping', {
+      headers: { authorization: `Nostr ${token}` },
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('wrong URL (u tag mismatch) -> 401', async () => {
+    const app = buildApp(masterResolver);
+    // Sign against a different endpoint than the request targets.
+    const token = signToken(
+      buildTemplate(
+        'https://relay.example.com/api/email/admin/settings',
+        'GET',
+        Math.floor(Date.now() / 1000),
+      ),
+      MASTER_SK,
+    );
+    const res = await req(app, 'GET', '/api/email/admin/ping', {
+      headers: { authorization: `Nostr ${token}` },
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('wrong method (method tag mismatch) -> 401', async () => {
+    const app = buildApp(masterResolver);
+    // Sign with method=POST but send a GET request.
+    const token = signToken(
+      buildTemplate(PUBLIC_URL, 'POST', Math.floor(Date.now() / 1000)),
+      MASTER_SK,
+    );
+    const res = await req(app, 'GET', '/api/email/admin/ping', {
+      headers: { authorization: `Nostr ${token}` },
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('payload tag present but body tampered -> 401', async () => {
+    const app = buildApp(masterResolver);
+    // Compute the SHA-256 of the original body, sign with a payload tag, then
+    // send a DIFFERENT body so the digest check fails.
+    const originalBody = JSON.stringify({ hello: 'world' });
+    const tamperedBody = JSON.stringify({ hello: 'TAMPERED' });
+    const digest = await sha256Hex(originalBody);
+    const token = signToken(
+      buildTemplate(
+        PUBLIC_URL,
+        'POST',
+        Math.floor(Date.now() / 1000),
+        digest,
+      ),
+      MASTER_SK,
+    );
+    const res = await req(app, 'POST', '/api/email/admin/ping', {
+      headers: {
+        authorization: `Nostr ${token}`,
+        'content-type': 'application/json',
+      },
+      body: tamperedBody,
+    });
+    expect(res.status).toBe(401);
+  });
+});
+
+/** Compute the SHA-256 hex digest of a string (for the payload tag). */
+async function sha256Hex(text: string): Promise<string> {
+  const buffer = new TextEncoder().encode(text);
+  const digest = await crypto.subtle.digest('SHA-256', buffer);
+  return Buffer.from(new Uint8Array(digest)).toString('hex');
+}
