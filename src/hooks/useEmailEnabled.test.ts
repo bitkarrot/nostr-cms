@@ -84,4 +84,30 @@ describe('useEmailEnabled / getEmailEnabled', () => {
     const { getEmailEnabled } = await loadModule();
     expect(getEmailEnabled()).toBe(false);
   });
+
+  // --- 01-04-02: priority cases — env wins over meta when both set ---
+
+  it('env=true wins over meta email_enabled=false (env wins)', async () => {
+    vi.stubEnv('VITE_EMAIL_ENABLED', 'true');
+    setMetaConfig({ email_enabled: false });
+    const { getEmailEnabled } = await loadModule();
+    expect(getEmailEnabled()).toBe(true);
+  });
+
+  it('env=false wins over meta email_enabled=true (env wins, reverse case)', async () => {
+    vi.stubEnv('VITE_EMAIL_ENABLED', 'false');
+    setMetaConfig({ email_enabled: true });
+    const { getEmailEnabled } = await loadModule();
+    expect(getEmailEnabled()).toBe(false);
+  });
+
+  it('env set to non-"true" string + meta=true → false (env short-circuits, string coercion)', async () => {
+    // env="1" is set but is not the literal "true" string, so it resolves false.
+    // Because env is set, meta is NOT consulted — assert false proves env-wins
+    // short-circuits before meta (otherwise meta=true would yield true).
+    vi.stubEnv('VITE_EMAIL_ENABLED', '1');
+    setMetaConfig({ email_enabled: true });
+    const { getEmailEnabled } = await loadModule();
+    expect(getEmailEnabled()).toBe(false);
+  });
 });
