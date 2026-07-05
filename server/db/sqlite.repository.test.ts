@@ -309,8 +309,8 @@ describe('SqliteSubscriberRepository', () => {
     // A malicious key that would inject SQL if interpolated unchecked.
     await expect(
       repo.updateSendLog('A', log.id, {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         "id = 'x'; DROP TABLE send_log--": 1,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any),
     ).rejects.toThrow(/unknown column/);
     // The table must still exist (no injection occurred).

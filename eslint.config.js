@@ -62,7 +62,11 @@ export default tseslint.config(
         ],
         patterns: [
           {
-            group: ["server/*", "../server/*", "../../server/*", "../../../server/*"],
+            // WR-06: cover relative imports reaching into server/ at any depth.
+            // The finite list (server/*, ../server/*, ../../server/*, ...)
+            // had a depth ceiling — a 4+-deep src/ file could bypass the guard.
+            // `**/server/*` matches `server/*` and any `../.../server/*` depth.
+            group: ["**/server/*", "**/../server/*", "../../server/*", "../../../server/*", "../../../../server/*", "../../../../../server/*"],
             message: "Importing from server/ is forbidden in src/ (server-only boundary).",
           },
         ],

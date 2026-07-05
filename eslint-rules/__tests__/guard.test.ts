@@ -33,7 +33,8 @@ const SRC_RULE_CONFIG: any = [
     ],
     patterns: [
       {
-        group: ['server/*', '../server/*', '../../server/*', '../../../server/*'],
+        // WR-06: matches server/ relative imports at any depth.
+        group: ['**/server/*', '**/../server/*', '../../server/*', '../../../server/*', '../../../../server/*', '../../../../../server/*'],
         message: 'Importing from server/ is forbidden in src/ (server-only boundary).',
       },
     ],
@@ -97,6 +98,22 @@ describe('server-only import guard (SRV-01, T-01-04)', () => {
 
   it('src/ importing from server/* (top-level relative) -> lint error', () => {
     const messages = lintAsSrc("import { foo } from 'server/db/sqlite';");
+    const hits = messages.filter((m) => m.ruleId === 'no-restricted-imports');
+    expect(hits.length).toBe(1);
+    expect(hits[0].message).toContain('server-only boundary');
+  });
+
+  it('src/ importing from server/* 4 levels deep -> lint error (WR-06 depth ceiling)', () => {
+    // WR-06: a 4+-deep src/ file (e.g. src/a/b/c/d/file.ts) importing
+    // ../../../../server/db/sqlite must NOT bypass the guard.
+    const messages = lintAsSrc("import { openDatabase } from '../../../../server/db/sqlite';");
+    const hits = messages.filter((m) => m.ruleId === 'no-restricted-imports');
+    expect(hits.length).toBe(1);
+    expect(hits[0].message).toContain('server-only boundary');
+  });
+
+  it('src/ importing from server/* 5 levels deep -> lint error (WR-06 depth ceiling)', () => {
+    const messages = lintAsSrc("import { openDatabase } from '../../../../../server/db/sqlite';");
     const hits = messages.filter((m) => m.ruleId === 'no-restricted-imports');
     expect(hits.length).toBe(1);
     expect(hits[0].message).toContain('server-only boundary');
