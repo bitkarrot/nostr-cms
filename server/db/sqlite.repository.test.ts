@@ -275,6 +275,24 @@ describe('SqliteSubscriberRepository', () => {
     expect(stillA!.status).toBe('completed');
   });
 
+  it('updateSendLog rejects unknown column names (WR-02 SQL-injection guard)', async () => {
+    const repo = makeRepo();
+    const log = await repo.createSendLog({
+      site_id: 'A', post_event_id: 'evt-2', subject: 'Hi', recipient_count: 5, sent_count: 0,
+      status: 'pending', started_at: new Date().toISOString(), completed_at: null,
+    });
+    // A malicious key that would inject SQL if interpolated unchecked.
+    await expect(
+      repo.updateSendLog('A', log.id, {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        "id = 'x'; DROP TABLE send_log--": 1,
+      } as any),
+    ).rejects.toThrow(/unknown column/);
+    // The table must still exist (no injection occurred).
+    const found = await repo.findSendLogByPostEventId('A', 'evt-2');
+    expect(found).not.toBeNull();
+  });
+
   it('records delivery events', async () => {
     const repo = makeRepo();
     const sub = await repo.insertSubscriber('A', {

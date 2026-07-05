@@ -374,10 +374,22 @@ export class SqliteSubscriberRepository implements SubscriberRepository {
   }
 
   async updateSendLog(siteId: string, id: string, patch: Partial<SendLog>): Promise<void> {
+    // WR-02: allowlist of updatable columns — reject unknown keys to prevent
+    // SQL injection via interpolated column names (values are parameterized,
+    // but column names are not). Throw on any key not in the allowlist so a
+    // future handler that spreads an untrusted JSON body into `patch` fails
+    // loudly instead of injecting SQL.
+    const ALLOWED_COLUMNS = new Set([
+      'post_event_id', 'subject', 'recipient_count', 'sent_count',
+      'status', 'completed_at',
+    ]);
     const sets: string[] = [];
     const params: unknown[] = [];
     for (const [key, value] of Object.entries(patch)) {
       if (key === 'id' || key === 'site_id') continue;
+      if (!ALLOWED_COLUMNS.has(key)) {
+        throw new Error(`updateSendLog: unknown column "${key}"`);
+      }
       sets.push(`${key} = ?`);
       params.push(value);
     }
