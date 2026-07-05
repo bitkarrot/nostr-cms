@@ -50,7 +50,10 @@ export function getEmailEnabled(): boolean {
 
   const injected = getSwarmConfig().email_enabled;
   if (injected !== undefined) {
-    return !!injected;
+    // WR-07: strict coercion — a string "false" in the meta tag must NOT
+    // enable the module (violates "default off"). Mirror the env path: only
+    // the boolean true or the case-insensitive string "true" enables.
+    return injected === true || (typeof injected === 'string' && injected.toLowerCase() === 'true');
   }
 
   return false;

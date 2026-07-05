@@ -68,6 +68,27 @@ describe('useEmailEnabled / getEmailEnabled', () => {
     expect(getEmailEnabled()).toBe(true);
   });
 
+  it('returns false when meta tag email_enabled is the string "false" (WR-07 strict coercion)', async () => {
+    // WR-07: a string "false" in the meta tag must NOT enable the module
+    // (the old !!injected coercion treated "false" as truthy — default-off
+    // violation). Only boolean true or string "true" (case-insensitive) enable.
+    setMetaConfig({ email_enabled: 'false' });
+    const { getEmailEnabled } = await loadModule();
+    expect(getEmailEnabled()).toBe(false);
+  });
+
+  it('returns true when meta tag email_enabled is the string "true" (WR-07)', async () => {
+    setMetaConfig({ email_enabled: 'true' });
+    const { getEmailEnabled } = await loadModule();
+    expect(getEmailEnabled()).toBe(true);
+  });
+
+  it('returns false when meta tag email_enabled is the string "TRUE" (WR-07 case-insensitive true)', async () => {
+    setMetaConfig({ email_enabled: 'TRUE' });
+    const { getEmailEnabled } = await loadModule();
+    expect(getEmailEnabled()).toBe(true);
+  });
+
   it('returns false when both env and meta are unset (default off, SRV-05)', async () => {
     const { getEmailEnabled } = await loadModule();
     expect(getEmailEnabled()).toBe(false);
