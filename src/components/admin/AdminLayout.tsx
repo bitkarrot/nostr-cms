@@ -34,7 +34,9 @@ import {
   ClipboardList,
   RefreshCw,
   UserRoundCog,
+  Mail,
 } from 'lucide-react';
+import { useEmailEnabled } from '@/hooks/useEmailEnabled';
 
 export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -51,6 +53,7 @@ export default function AdminLayout() {
   const { data: isSchedulerHealthy } = useSchedulerHealth();
   const { nostr } = useDefaultRelay();
   const queryClient = useQueryClient();
+  const emailEnabled = useEmailEnabled();
 
   // Prefetch shared queries so Dashboard/Blog/Events load instantly
   useEffect(() => {
@@ -96,6 +99,7 @@ export default function AdminLayout() {
     { name: 'Notes', href: '/admin/notes', icon: MessageCircle },
     { name: 'Blog Posts', href: '/admin/blog', icon: FileText },
     ...(isSchedulerHealthy ? [{ name: 'Scheduled', href: '/admin/scheduled', icon: Clock }] : []),
+    ...(emailEnabled ? [{ name: 'Email', href: '/admin/email', icon: Mail }] : []),
 
     { name: 'Events', href: '/admin/events', icon: Calendar },
     { name: 'Feed', href: '/admin/feed', icon: Rss },

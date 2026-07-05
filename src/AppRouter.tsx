@@ -24,6 +24,7 @@ import AdminScheduledPage from "./pages/admin/AdminScheduledPage";
 import AdminFormsPage from "./pages/admin/AdminFormsPage";
 import AdminSyncPage from "./pages/admin/AdminSyncPage";
 import AdminRelayAccessPage from "./pages/admin/AdminRelayAccessPage";
+import AdminEmailPage from "./pages/admin/AdminEmailPage";
 
 // Public pages
 import EventsPage from "./pages/EventsPage";
@@ -72,6 +73,7 @@ export function AppRouter() {
           <Route path="notes" element={<AdminNotesPage />} />
           <Route path="blog" element={<AdminBlogPage />} />
           <Route path="scheduled" element={<AdminScheduledPage />} />
+          <Route path="email" element={<AdminEmailPage />} />
           <Route path="events" element={<AdminEventsPage />} />
           <Route path="feed" element={<AdminFeedPage />} />
           <Route path="zaplytics" element={<AdminZaplyticsPage />} />
