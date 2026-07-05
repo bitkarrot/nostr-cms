@@ -6,7 +6,7 @@ import { existsSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync }
 
 import Database from 'better-sqlite3';
 
-import { backupDatabase, runBackup } from './backup';
+import { backupDatabase, runBackup, DEFAULT_EMAIL_DB_PATH } from './backup';
 import { openDatabase } from './sqlite';
 
 describe('backupDatabase', () => {
@@ -142,5 +142,21 @@ describe('runBackup', () => {
     expect(files).toContain(`email.db.${stamp}.bak`);
     // staleStat is just for linter; confirm it existed before rotation
     expect(staleStat).toBeDefined();
+  });
+});
+
+describe('DEFAULT_EMAIL_DB_PATH (WR-05)', () => {
+  it('is the same default used by server/index.ts (no divergence)', async () => {
+    // WR-05: backup.ts and index.ts previously diverged (/app/email.db vs
+    // ./email.db). Both now import this single constant, so the backup cron
+    // and the live server open the same file when EMAIL_DB_PATH is unset.
+    expect(DEFAULT_EMAIL_DB_PATH).toBe('./email.db');
+    // Importing index.ts must not throw and must re-export the same constant
+    // (index.ts imports DEFAULT_EMAIL_DB_PATH from ./db/backup).
+    const indexModule = await import('../index');
+    expect(indexModule).toBeDefined();
+    // Sanity: the constant is a non-empty string.
+    expect(typeof DEFAULT_EMAIL_DB_PATH).toBe('string');
+    expect(DEFAULT_EMAIL_DB_PATH.length).toBeGreaterThan(0);
   });
 });

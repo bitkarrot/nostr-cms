@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { createApp } from './app';
+import { DEFAULT_EMAIL_DB_PATH } from './db/backup';
 import { openDatabase, SqliteSubscriberRepository } from './db/sqlite';
 import { runMigrations } from './db/migrate';
 import type { SubscriberRepository } from './db/repository';
@@ -28,7 +29,7 @@ async function main(): Promise<void> {
     // Postgres impl is additive (future phase). The branch exists for later.
     throw new Error('EMAIL_DB_BACKEND=postgres is not implemented in this phase');
   } else {
-    const dbPath = process.env.EMAIL_DB_PATH || './email.db';
+    const dbPath = process.env.EMAIL_DB_PATH || DEFAULT_EMAIL_DB_PATH;
     const db = openDatabase(dbPath);
     await runMigrations(db, MIGRATIONS_DIR);
     repo = new SqliteSubscriberRepository(db);

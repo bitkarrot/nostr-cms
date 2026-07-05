@@ -20,6 +20,14 @@ export async function backupDatabase(db: DB, destPath: string): Promise<void> {
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 /**
+ * WR-05: the single source of truth for the default `EMAIL_DB_PATH`.
+ * Both `runBackup` (below) and `server/index.ts` use this so the backup cron
+ * and the live server open the same file when `EMAIL_DB_PATH` is unset. Prod
+ * deployments override via `server/deploy/email.env` (`/app/email.db`).
+ */
+export const DEFAULT_EMAIL_DB_PATH = './email.db';
+
+/**
  * Runs a backup of the email DB to `${EMAIL_BACKUP_DIR}/email.db.YYYY-MM-DD.bak`
  * (WR-04: each run produces a distinct timestamped file so backups are not
  * silently overwritten — the previous single-file approach made "7-day
@@ -28,7 +36,7 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
  * older than 7 days by mtime after the backup completes.
  */
 export async function runBackup(): Promise<void> {
-  const dbPath = process.env.EMAIL_DB_PATH || './email.db';
+  const dbPath = process.env.EMAIL_DB_PATH || DEFAULT_EMAIL_DB_PATH;
   const backupDir = process.env.EMAIL_BACKUP_DIR || '/app/backups';
   mkdirSync(backupDir, { recursive: true });
 
