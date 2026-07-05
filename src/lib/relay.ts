@@ -12,6 +12,7 @@ import { nip19 } from 'nostr-tools';
 interface SwarmConfig {
   masterPubkey?: string;
   relayName?: string;
+  email_enabled?: boolean;
 }
 
 /** Read the server-injected config from <meta name="swarm-config"> tag.
@@ -29,6 +30,30 @@ function getSwarmConfig(): SwarmConfig {
     }
   }
   return {};
+}
+
+/**
+ * Get whether the email newsletter module is enabled (SRV-05).
+ * Priority: VITE_EMAIL_ENABLED env var → swarm-config meta tag `email_enabled`.
+ * Default when neither is set: false (opt-in, default off).
+ *
+ * VITE_EMAIL_ENABLED is a public UI flag (controls UI visibility only, no secrets),
+ * so it is a legitimate VITE_ var. The string "true" (case-insensitive) coerces to
+ * boolean true; any other string coerces to false (mirrors getMasterPubkey's
+ * env-over-meta priority — env wins, short-circuiting before meta is consulted).
+ */
+export function getEmailEnabled(): boolean {
+  const envEnabled = import.meta.env.VITE_EMAIL_ENABLED;
+  if (envEnabled !== undefined) {
+    return String(envEnabled).toLowerCase() === 'true';
+  }
+
+  const injected = getSwarmConfig().email_enabled;
+  if (injected !== undefined) {
+    return !!injected;
+  }
+
+  return false;
 }
 
 /**
