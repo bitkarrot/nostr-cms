@@ -4,7 +4,7 @@ Project guidance for AI agents working in this repo.
 
 ## What this is
 
-A Nostr-based CMS for meetups and small organizations. Client-side SPA (Vite + React 18 + TS) backed by Nostr relays, with an optional Go/Swarm ("bkrelay") backend serving `/api/scheduler/*` and `/api/admin/*` (NIP-98 auth). Deploys to Vercel (static host) and to a self-hosted Go relay. Currently in production, single-tenant.
+A Nostr-based CMS for meetups and small organizations. Client-side SPA (Vite + React 18 + TS) backed by Nostr relays, with the **swarm** relay (`github.com/hivetalk/swarm`, a separate Go repo, fork of `bitvora/team-relay`) serving `/api/scheduler/*` and `/api/admin/*` (NIP-98 auth) plus `/.well-known/nostr.json`. Deploys self-hosted (relay box + nginx) or to Vercel (static host + InsForge/Postgres for `scheduled_posts`). Currently in production, single-tenant.
 
 ## Planning artifacts
 
@@ -27,14 +27,16 @@ All planning lives in `.planning/`:
 - Frontend: React + TypeScript + shadcn/ui + Tailwind + @nostrify/react + TanStack Query. Path alias `@/*` → `./src/*`.
 - New admin page: `src/components/admin/Admin[Feature].tsx` + thin wrapper `src/pages/admin/Admin[Feature]Page.tsx` + route in `src/AppRouter.tsx` + sidebar entry in `src/components/admin/AdminLayout.tsx`.
 - New hook: `src/hooks/use[Feature].ts`, named export.
-- Server-side code (email milestone): `api/email/*.ts` Vercel functions (Node runtime). Server-only deps (`resend`, `@supabase/supabase-js`, `csv-parse`) must NEVER be imported from `src/`.
-- Admin auth on new endpoints: reuse the NIP-98 + master-pubkey check pattern from `src/hooks/useScheduledPosts.ts` (`fetchWithNip98`).
+- Server-side code (email milestone): `server/` folder in this repo, a separate Node entry point (`npm run server`), NOT part of the Vite client build. Server-only deps (`resend`, `better-sqlite3`, `csv-parse`) must NEVER be imported from `src/` (enforced by ESLint guard).
+- Admin auth on new endpoints: SPA side reuses the NIP-98 `fetchWithNip98` pattern from `src/hooks/useScheduledPosts.ts`; server side verifies NIP-98 in `server/auth/nip98.ts` (pure crypto) + master-pubkey check via `nostr.json` fetch.
+- DB: SQLite (`better-sqlite3`, WAL mode) is the default behind a `SubscriberRepository` interface; Postgres is additive via `EMAIL_DB_BACKEND=postgres`. Same schema, two migration dialects.
+- swarm is a separate repo — do not modify it for email features. The email service talks to swarm only over HTTP/WS.
 
 ## Hard constraints
 
-- Nostr relays are the content store for CMS content. Subscriber emails/PII must NEVER be stored on relays — they live only in Supabase Postgres.
-- Secrets (Resend API key, Supabase service role) are server-only; never `VITE_*`.
-- Don't break the existing Vercel static deploy or the Go/Swarm `/api` proxy.
+- Nostr relays are the content store for CMS content. Subscriber emails/PII must NEVER be stored on relays — they live only in the email service's SQLite/Postgres DB.
+- Secrets (Resend API key, DB credentials) are server-only; never `VITE_*`.
+- Don't break the existing Vercel static deploy or the swarm `/api` proxy. The email service is additive (`/api/email/*`), routed via a new nginx location block on self-hosted deploys.
 
 ## Current milestone: Email Newsletter
 

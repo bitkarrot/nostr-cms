@@ -2,7 +2,7 @@
 
 ## Overview
 
-Add an email-newsletter capability to the production, single-tenant nostr-cms so a creator can collect subscribers (public signup with double opt-in, or admin CSV import), segment them Geyser-style (Followers / Contributors / Reward buyers), and send new blog posts and Kind 1 digests to those subscribers via a third-party email API (Resend) at an admin-configured rate (5–5000/min). The capability is delivered by a new TypeScript serverless layer on Vercel plus a Supabase Postgres subscriber store; the existing Go/Swarm backend and the SPA's Nostr-as-database model are untouched. Six phases build the vertical spine (server + config), then audience acquisition (signup + management), then distribution (send pipeline + digests).
+Add an email-newsletter capability to the production, single-tenant nostr-cms so a creator can collect subscribers (public signup with double opt-in, or admin CSV import), segment them Geyser-style (Followers / Contributors / Reward buyers), and send new blog posts and Kind 1 digests to those subscribers via a third-party email API (Resend) at an admin-configured rate (5–5000/min). The capability is delivered by a new Node/TS email service in `nostr-cms/server/` with a SQLite-first subscriber database (Postgres additive via a repository interface); the swarm relay (separate Go repo) and the SPA's Nostr-as-database model are untouched. Six phases build the vertical spine (server + config), then audience acquisition (signup + management), then distribution (send pipeline + digests).
 
 ## Phases
 
@@ -12,7 +12,7 @@ Add an email-newsletter capability to the production, single-tenant nostr-cms so
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Server Foundation & Admin Auth** - Vercel TS functions, Supabase schema + RLS, NIP-98 admin verification, vercel.json rewrite split
+- [ ] **Phase 1: Server Foundation & Admin Auth** - Node/TS service in `server/`, `SubscriberRepository` interface + SQLite impl, NIP-98 admin verification in Node, nginx routing
 - [ ] **Phase 2: Admin Email Configuration** - Resend API key + sending domain + rate-limit setting UI, connection test
 - [ ] **Phase 3: Public Signup & Double Opt-in** - Toggleable signup module, confirmation email, verify + unsubscribe pages
 - [ ] **Phase 4: Subscriber Management & Segments** - CSV import, subscriber table UI, segment assignment
@@ -22,20 +22,20 @@ Decimal phases appear between their surrounding integers in numeric order.
 ## Phase Details
 
 ### Phase 1: Server Foundation & Admin Auth
-**Goal**: Stand up the serverless layer, subscriber database, and admin auth seam so all later phases have a safe place to put secrets and logic. Nothing user-visible ships here.
+**Goal**: Stand up the Node/TS email service, the subscriber database (SQLite-first via a repository interface), and the admin auth seam so all later phases have a safe place to put secrets and logic. Nothing user-visible ships here.
 **Depends on**: Nothing (first phase)
 **Requirements**: SRV-01, SRV-02, SRV-03, SRV-04
 **Success Criteria** (what must be TRUE):
-  1. A `/api/email/*` Vercel function route exists and responds to a health check, with no server-only deps importable from `src/`
-  2. Supabase tables (subscribers, settings, verify_tokens, send_log, delivery_events) exist with `site_id` columns and RLS policies denying anon access to PII
-  3. An admin endpoint rejects requests lacking a valid NIP-98 signature from the site master pubkey, and accepts one with it
-  4. `vercel.json` routes `/api/email/*` to Vercel functions while `/api/scheduler/*` and `/api/admin/*` continue to proxy to the Go/Swarm backend
+  1. A Node/TS service in `nostr-cms/server/` responds to a `/api/email/health` check, with server-only deps (`resend`, `better-sqlite3`) never importable from `src/` (ESLint guard enforced)
+  2. A `SubscriberRepository` interface exists with a SQLite implementation and migrations for subscribers, settings, verify_tokens, send_log, delivery_events (all carrying `site_id`); WAL mode is enabled and an online-backup path is documented
+  3. An admin endpoint rejects requests lacking a valid NIP-98 signature from the site master pubkey (resolved from `VITE_MASTER_PUBKEY` or `/.well-known/nostr.json`), and accepts one with it
+  4. The service runs as a long-running process on the relay box with nginx routing `/api/email/*` to it; swarm is not modified
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: Supabase schema, RLS policies, and SQL migration for email tables
-- [ ] 01-02: Vercel function scaffold under `api/email/*` with NIP-98 admin auth + master-pubkey check
-- [ ] 01-03: `vercel.json` rewrite split + ESLint guard forbidding server-only imports under `src/`
+- [ ] 01-01: `server/` scaffold + `SubscriberRepository` interface + SQLite implementation + migrations (WAL mode, online backup)
+- [ ] 01-02: NIP-98 verification in Node + master-pubkey check via `nostr.json` fetch + admin endpoint scaffold
+- [ ] 01-03: nginx location block + `npm run server` entry + ESLint guard forbidding `server/`-only imports under `src/`
 
 ### Phase 2: Admin Email Configuration
 **Goal**: Give the admin the first user-visible surface — entering and testing the email provider config and setting the rate limit + module toggle — so sending becomes possible.
@@ -99,7 +99,7 @@ Plans:
 Plans:
 - [ ] 05-01: Post-to-email React Email template + post content fetch from relay
 - [ ] 05-02: Token-bucket rate limiter reading the configured rate from settings
-- [ ] 05-03: `/admin/send` endpoint with recipient-count preview, segment filter, chunked + resumable batch send
+- [ ] 05-03: `/admin/send` endpoint with recipient-count preview, segment filter, persistent-progress batch send (resumable across process restarts)
 - [ ] 05-04: Send composer admin UI (post picker, segment selector, preview, recipient count, send button)
 
 ### Phase 6: Digests & Delivery Feedback
@@ -113,7 +113,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 06-01: Vercel cron + digest builder (recent Kind 1 notes → React Email template)
+- [ ] 06-01: In-process cron + digest builder (recent Kind 1 notes → React Email template)
 - [ ] 06-02: `/webhooks/resend` endpoint with signature verification + delivery_events writes
 - [ ] 06-03: Bounce/complaint auto-suppression rule + admin delivery dashboard
 
@@ -124,7 +124,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Server Foundation & Admin Auth | 0/3 | Not started | - |
+| 1. Server Foundation & Admin Auth (Node/TS service + SQLite) | 0/3 | Not started | - |
 | 2. Admin Email Configuration | 0/2 | Not started | - |
 | 3. Public Signup & Double Opt-in | 0/3 | Not started | - |
 | 4. Subscriber Management & Segments | 0/3 | Not started | - |

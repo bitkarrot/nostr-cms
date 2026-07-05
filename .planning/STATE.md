@@ -51,9 +51,10 @@ Progress: [░░░░░░░░░░] 0%
 ### Decisions
 
 - Email delivery via Resend (third-party API), not self-hosted MTA — avoids deliverability/compliance burden, fits TS codebase via React Email
-- Server layer = Vercel Serverless Functions (Node, TS) under `/api/email/*`; Go/Swarm backend untouched
-- Subscriber DB = Supabase Postgres with `site_id` column for future multi-tenant additivity
-- Single-tenant now; schema multi-tenant-ready later
+- Server layer = Node/TS email service in `nostr-cms/server/` (long-running process, not Vercel functions); same language as frontend, full npm, persistent FS, no function timeout
+- Subscriber DB = SQLite first (`better-sqlite3`, WAL mode) behind a `SubscriberRepository` interface; Postgres additive later via `EMAIL_DB_BACKEND` env var. SQLite is the self-hosted default; Postgres is the hosted/Vercel path (reuses existing InsForge/Postgres provisioned for `scheduled_posts`)
+- swarm (Go relay, separate repo, fork of `bitvora/team-relay`) stays untouched; email service talks to it only over HTTP/WS (nostr.json fetch, relay WS reads). No monorepo merge — preserves swarm's standalone utility + upstream trackability
+- Single-tenant now; schema multi-tenant-ready later (`site_id` on all tables)
 - Email content derives from CMS posts/Kind 1 notes (no separate newsletter editor)
 - Plebian Market reward sales deferred to a future milestone
 - Trigger model: admin-initiated send first (Phase 5); automatic kind-23 trigger deferred to v2
@@ -64,9 +65,10 @@ Progress: [░░░░░░░░░░] 0%
 
 ### Patterns
 
-- Reuse existing NIP-98 `fetchWithNip98` pattern from `src/hooks/useScheduledPosts.ts` for admin auth on new endpoints
+- Reuse existing NIP-98 `fetchWithNip98` pattern from `src/hooks/useScheduledPosts.ts` for admin auth on new endpoints (SPA side); server-side NIP-98 verification is pure crypto in `server/auth/nip98.ts`
 - Reuse shadcn/ui + react-hook-form + zod + TanStack Query for all new admin/public UI
 - Split admin components into sub-files to avoid the existing 1886-line `AdminForms.tsx` anti-pattern
+- `server/` is a separate Node entry point (`npm run server`), not part of the Vite client build; server-only deps never imported from `src/`
 
 ### Learnings
 

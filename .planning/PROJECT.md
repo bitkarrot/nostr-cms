@@ -55,8 +55,8 @@ Let a creator run a full community site (content + events + payments) entirely o
 ## Context
 
 - **Architecture**: Client-side SPA (Vite + React 18 + TypeScript). Nostr relays are the content store. TanStack Query for caching, shadcn/ui + Tailwind for UI, @nostrify/react for Nostr. See `.planning/codebase/ARCHITECTURE.md`.
-- **Backend**: The only server component is the optional Go/Swarm ("bkrelay") backend that proxies `/api` routes and injects runtime config via `<meta name="swarm-config">`. The email feature requires server-side capabilities (SMTP sending, subscriber storage, rate limiting, CSV ingest, opt-in tokens) that cannot run in the browser.
-- **Email approach (decided)**: Use a third-party email API (e.g. Resend/Mailgun/SendGrid/Buttondown) for delivery and list management, with a thin server/edge layer for opt-in confirmation and CSV ingest. Specific provider and subscriber-DB choice to be resolved during phase research/planning.
+- **Backend**: The relay is **swarm** (`github.com/hivetalk/swarm`, a fork of `bitvora/team-relay`) — a separate Go repo using Badger (KV store), serving `/api/scheduler/*` and `/api/admin/*` with NIP-98 auth, plus `/.well-known/nostr.json`. nostr-cms and swarm are independent repos coupled only at deploy time (via `setup/install-meetup-space.sh` + nginx). The email feature requires server-side capabilities (SMTP sending, subscriber storage, rate limiting, CSV ingest, opt-in tokens) that cannot run in the browser.
+- **Email approach (decided)**: A Node/TS email service in a new `server/` folder inside the nostr-cms repo, calling Resend for delivery, with SQLite as the default subscriber DB (`better-sqlite3`) behind a `SubscriberRepository` interface so Postgres is additive later. The service verifies NIP-98 signatures itself and talks to swarm only over HTTP/WS. swarm is not modified.
 - **Geyser reference**: Geyser Fund ties emails to project posts, segments audiences (Followers, Contributors, Reward buyers), shows recipient counts before sending, and offers recurring weekly/monthly notification emails. See `how-geyser-manages-email.md`.
 - **Known concerns**: Limited test coverage (4 test files), some XSS surface via `dangerouslySetInnerHTML`, large admin component files. See `.planning/codebase/CONCERNS.md`.
 
@@ -73,9 +73,11 @@ Let a creator run a full community site (content + events + payments) entirely o
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Email delivery via third-party email API (not self-hosted MTA) | Avoids running an SMTP server; leverages provider deliverability, rate limiting, and compliance | — Pending |
-| Subscriber DB choice deferred to phase planning | Need research on provider/list-management trade-offs vs. own DB before committing | — Pending |
-| Single-tenant now, schema multi-tenant-ready later | Matches current deploy model; avoids premature complexity | — Pending |
+| Email delivery via Resend (third-party email API, not self-hosted MTA) | Avoids running an SMTP server; first-class TS SDK + React Email; leverages provider deliverability and compliance | — Pending |
+| Server layer = Node/TS service in `nostr-cms/server/` (not Vercel functions, not extending swarm) | Same language as frontend; long-running process → persistent FS (SQLite viable) + no function timeout; keeps swarm upstream-trackable | — Pending |
+| Subscriber DB = SQLite first, Postgres additive via `SubscriberRepository` interface | SQLite is simplest for single-tenant creator scale (no network hop, no bill); Postgres available for hosted deployers who already have InsForge/Postgres | — Pending |
+| swarm stays a separate, untouched repo (no monorepo merge) | Preserves swarm's standalone utility and upstream tracking of `bitvora/team-relay`; email service talks to it only over HTTP/WS | — Pending |
+| Single-tenant now, schema multi-tenant-ready later (`site_id`) | Matches current deploy model; avoids premature complexity | — Pending |
 | Email content derives from CMS posts/Kind 1 notes (no separate editor) | Reuses existing authoring flow; matches Geyser's post-based email model | — Pending |
 | Reward-item sales (Plebian Market) out of scope this milestone | Owner decision; focus on email + segments first | — Pending |
 

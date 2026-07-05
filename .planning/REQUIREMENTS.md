@@ -9,14 +9,14 @@ Requirements for the Email Newsletter milestone. Each maps to roadmap phases bel
 
 ### Server Foundation & Auth
 
-- [ ] **SRV-01**: A TypeScript serverless layer exists under `/api/email/*` on Vercel, deployed alongside the SPA, with no secrets in the client bundle
-- [ ] **SRV-02**: Supabase Postgres schema exists for subscribers, settings, verify_tokens, send_log, delivery_events (all carrying `site_id`), with RLS policies
-- [ ] **SRV-03**: Admin endpoints verify NIP-98 signatures and require the signer be the site master/owner pubkey
-- [ ] **SRV-04**: A `vercel.json` rewrite split cleanly routes `/api/email/*` to Vercel functions while preserving existing `/api/scheduler/*` and `/api/admin/*` proxying to the Go backend
+- [ ] **SRV-01**: A Node/TS email service exists in `nostr-cms/server/` exposing `/api/email/*` routes, with server-only deps (`resend`, `better-sqlite3`) never imported from `src/` (enforced by an ESLint guard)
+- [ ] **SRV-02**: A `SubscriberRepository` interface exists with a SQLite implementation (`better-sqlite3`, WAL mode) and migrations for subscribers, settings, verify_tokens, send_log, delivery_events (all carrying `site_id`); Postgres is additive later behind the same interface (`EMAIL_DB_BACKEND` selects)
+- [ ] **SRV-03**: Admin endpoints verify NIP-98 signatures in Node (pure crypto) and require the signer be the site master/owner pubkey, resolved from `VITE_MASTER_PUBKEY` or by fetching `/.well-known/nostr.json` from swarm over HTTP
+- [ ] **SRV-04**: The email service runs as a long-running Node process on the relay box (self-hosted) with nginx routing `/api/email/*` to it, and is also deployable hosted with `EMAIL_DB_BACKEND=postgres`; swarm is not modified
 
 ### Admin Email Configuration
 
-- [ ] **CFG-01**: Admin can enter and save the Resend API key + verified sending domain + from-name (stored server-side, never exposed to the client)
+- [ ] **CFG-01**: Admin can enter and save the Resend API key + verified sending domain + from-name + postal address (stored server-side in the DB `settings` table, never exposed to the client)
 - [ ] **CFG-02**: Admin can trigger a connection test that sends a test email and reports success/failure
 - [ ] **CFG-03**: Admin can set the send rate limit via a control selectable from 5 to 5000 emails per minute
 - [ ] **CFG-04**: Admin can enable/disable the public signup module site-wide
@@ -40,7 +40,7 @@ Requirements for the Email Newsletter milestone. Each maps to roadmap phases bel
 - [ ] **SND-01**: Admin can send a published NIP-23 blog post as an email to active subscribers, optionally targeting one or more segments
 - [ ] **SND-02**: Before sending, the admin sees the recipient count for the selected segment(s) and a preview of the rendered email
 - [ ] **SND-03**: Sends are rate-limited server-side by a token bucket honoring the configured emails-per-minute (5–5000)
-- [ ] **SND-04**: A send job persists progress so a function timeout can resume without duplicate sends; each send is recorded in send_log
+- [ ] **SND-04**: A send job persists progress so a process restart can resume without duplicate sends; each send is recorded in send_log
 - [ ] **SND-05**: Email content renders from the CMS post via a React Email template with a compliant footer (sender name, postal address, unsubscribe link)
 
 ### Digests & Delivery Feedback
