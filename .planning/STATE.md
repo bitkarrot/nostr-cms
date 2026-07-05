@@ -1,0 +1,98 @@
+---
+gsd_state_version: '1.0'
+status: planning
+progress:
+  total_phases: 6
+  completed_phases: 0
+  total_plans: 18
+  completed_plans: 0
+  percent: 0
+---
+
+# Project State
+
+## Project Reference
+
+See: .planning/PROJECT.md (updated 2026-07-04)
+
+**Core value:** Let a creator run a full community site (content + events + payments) entirely on Nostr, with a rich admin panel and a polished public front end — and now reach that audience by email.
+**Current focus:** Phase 1 — Server Foundation & Admin Auth
+
+## Current Position
+
+Phase: 1 of 6 (Server Foundation & Admin Auth)
+Plan: 0 of 3 in current phase
+Status: Ready to plan
+Last activity: 2026-07-04 — Project initialized, research completed, REQUIREMENTS.md + ROADMAP.md created
+
+Progress: [░░░░░░░░░░] 0%
+
+## Performance Metrics
+
+**Velocity:**
+- Total plans completed: 0
+- Average duration: —
+- Total execution time: —
+
+**By Phase:**
+
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| - | - | - | - |
+
+**Recent Trend:**
+- Last 5 plans: —
+- Trend: —
+
+*Updated after each plan completion*
+
+## Accumulated Context
+
+### Decisions
+
+- Email delivery via Resend (third-party API), not self-hosted MTA — avoids deliverability/compliance burden, fits TS codebase via React Email
+- Server layer = Vercel Serverless Functions (Node, TS) under `/api/email/*`; Go/Swarm backend untouched
+- Subscriber DB = Supabase Postgres with `site_id` column for future multi-tenant additivity
+- Single-tenant now; schema multi-tenant-ready later
+- Email content derives from CMS posts/Kind 1 notes (no separate newsletter editor)
+- Plebian Market reward sales deferred to a future milestone
+- Trigger model: admin-initiated send first (Phase 5); automatic kind-23 trigger deferred to v2
+
+### Surprises
+
+- (none yet)
+
+### Patterns
+
+- Reuse existing NIP-98 `fetchWithNip98` pattern from `src/hooks/useScheduledPosts.ts` for admin auth on new endpoints
+- Reuse shadcn/ui + react-hook-form + zod + TanStack Query for all new admin/public UI
+- Split admin components into sub-files to avoid the existing 1886-line `AdminForms.tsx` anti-pattern
+
+### Learnings
+
+- (none yet)
+
+## Phase History
+
+| Phase | Status | Started | Completed |
+|-------|--------|---------|-----------|
+| 1. Server Foundation & Admin Auth | Not started | - | - |
+| 2. Admin Email Configuration | Not started | - | - |
+| 3. Public Signup & Double Opt-in | Not started | - | - |
+| 4. Subscriber Management & Segments | Not started | - | - |
+| 5. Send Pipeline | Not started | - | - |
+| 6. Digests & Delivery Feedback | Not started | - | - |
+
+## File Index
+
+| Artifact | Location |
+|----------|----------|
+| Project context | `.planning/PROJECT.md` |
+| Requirements | `.planning/REQUIREMENTS.md` |
+| Roadmap | `.planning/ROADMAP.md` |
+| Research summary | `.planning/research/SUMMARY.md` |
+| Stack research | `.planning/research/STACK.md` |
+| Features research | `.planning/research/FEATURES.md` |
+| Architecture research | `.planning/research/ARCHITECTURE.md` |
+| Pitfalls research | `.planning/research/PITFALLS.md` |
+| Codebase map | `.planning/codebase/*.md` |
