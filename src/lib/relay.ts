@@ -12,7 +12,10 @@ import { nip19 } from 'nostr-tools';
 interface SwarmConfig {
   masterPubkey?: string;
   relayName?: string;
-  email_enabled?: boolean;
+  // WR-07: the meta tag is JSON.parse'd at runtime; the Go server (or a
+  // hand-edited index.html) may inject a string "true"/"false" instead of a
+  // boolean. Type as boolean | string so the strict coercion below type-checks.
+  email_enabled?: boolean | string;
 }
 
 /** Read the server-injected config from <meta name="swarm-config"> tag.
