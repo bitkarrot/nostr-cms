@@ -239,12 +239,18 @@ describe('SqliteSubscriberRepository', () => {
       subscriber_id: sub.id, site_id: 'A', purpose: 'verify', expires_at: new Date(Date.now() + 60000).toISOString(),
     });
     expect(token.used).toBe(false);
-    const got = await repo.getToken(token.id);
+    const got = await repo.getToken('A', token.id);
     expect(got).not.toBeNull();
     expect(got!.subscriber_id).toBe(sub.id);
-    await repo.invalidateToken(token.id);
-    const after = await repo.getToken(token.id);
+    await repo.invalidateToken('A', token.id);
+    const after = await repo.getToken('A', token.id);
     expect(after!.used).toBe(true);
+    // cross-site lookup returns null (T-01-01)
+    expect(await repo.getToken('B', token.id)).toBeNull();
+    // cross-site invalidate is a no-op (site_id in WHERE)
+    await repo.invalidateToken('B', token.id);
+    const stillUsed = await repo.getToken('A', token.id);
+    expect(stillUsed!.used).toBe(true);
   });
 
   it('creates, updates, and finds send_log by post_event_id (site-scoped)', async () => {
@@ -254,13 +260,19 @@ describe('SqliteSubscriberRepository', () => {
       status: 'pending', started_at: new Date().toISOString(), completed_at: null,
     });
     expect(log.id).toBeTruthy();
-    await repo.updateSendLog(log.id, { sent_count: 10, status: 'completed', completed_at: new Date().toISOString() });
+    await repo.updateSendLog('A', log.id, { sent_count: 10, status: 'completed', completed_at: new Date().toISOString() });
     const found = await repo.findSendLogByPostEventId('A', 'evt-1');
     expect(found).not.toBeNull();
     expect(found!.sent_count).toBe(10);
     expect(found!.status).toBe('completed');
     // cross-site lookup returns null
     expect(await repo.findSendLogByPostEventId('B', 'evt-1')).toBeNull();
+    // cross-site update is a no-op (site_id in WHERE) — mutate under site B
+    // should NOT affect site A's row.
+    await repo.updateSendLog('B', log.id, { sent_count: 999, status: 'failed' });
+    const stillA = await repo.findSendLogByPostEventId('A', 'evt-1');
+    expect(stillA!.sent_count).toBe(10);
+    expect(stillA!.status).toBe('completed');
   });
 
   it('records delivery events', async () => {

@@ -332,22 +332,22 @@ export class SqliteSubscriberRepository implements SubscriberRepository {
       `INSERT INTO verify_tokens (id, subscriber_id, site_id, purpose, expires_at, used)
        VALUES (?, ?, ?, ?, ?, 0)`,
     ).run(id, token.subscriber_id, token.site_id, token.purpose, token.expires_at);
-    const created = await this.getToken(id);
+    const created = await this.getToken(token.site_id, id);
     if (!created) throw new Error('createToken: row not found after insert');
     return created;
   }
 
-  async getToken(id: string): Promise<VerifyToken | null> {
+  async getToken(siteId: string, id: string): Promise<VerifyToken | null> {
     const row = this.db.prepare(
-      'SELECT * FROM verify_tokens WHERE id = ?',
-    ).get(id) as VerifyTokenRow | undefined;
+      'SELECT * FROM verify_tokens WHERE site_id = ? AND id = ?',
+    ).get(siteId, id) as VerifyTokenRow | undefined;
     return row ? rowToToken(row) : null;
   }
 
-  async invalidateToken(id: string): Promise<void> {
+  async invalidateToken(siteId: string, id: string): Promise<void> {
     this.db.prepare(
-      'UPDATE verify_tokens SET used = 1 WHERE id = ?',
-    ).run(id);
+      'UPDATE verify_tokens SET used = 1 WHERE site_id = ? AND id = ?',
+    ).run(siteId, id);
   }
 
   // --- send_log ---
@@ -373,7 +373,7 @@ export class SqliteSubscriberRepository implements SubscriberRepository {
     return rowToSendLog(row);
   }
 
-  async updateSendLog(id: string, patch: Partial<SendLog>): Promise<void> {
+  async updateSendLog(siteId: string, id: string, patch: Partial<SendLog>): Promise<void> {
     const sets: string[] = [];
     const params: unknown[] = [];
     for (const [key, value] of Object.entries(patch)) {
@@ -382,8 +382,8 @@ export class SqliteSubscriberRepository implements SubscriberRepository {
       params.push(value);
     }
     if (sets.length === 0) return;
-    params.push(id);
-    this.db.prepare(`UPDATE send_log SET ${sets.join(', ')} WHERE id = ?`).run(...params);
+    params.push(siteId, id);
+    this.db.prepare(`UPDATE send_log SET ${sets.join(', ')} WHERE site_id = ? AND id = ?`).run(...params);
   }
 
   async findSendLogByPostEventId(siteId: string, postEventId: string): Promise<SendLog | null> {

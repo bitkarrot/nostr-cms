@@ -101,11 +101,11 @@ export interface SubscriberRepository {
   upsertSettings(siteId: string, settings: Partial<Settings>): Promise<Settings>;
   // verify_tokens
   createToken(token: NewToken): Promise<VerifyToken>;
-  getToken(id: string): Promise<VerifyToken | null>;
-  invalidateToken(id: string): Promise<void>;
+  getToken(siteId: string, id: string): Promise<VerifyToken | null>;
+  invalidateToken(siteId: string, id: string): Promise<void>;
   // send_log
   createSendLog(entry: NewSendLog): Promise<SendLog>;
-  updateSendLog(id: string, patch: Partial<SendLog>): Promise<void>;
+  updateSendLog(siteId: string, id: string, patch: Partial<SendLog>): Promise<void>;
   findSendLogByPostEventId(siteId: string, postEventId: string): Promise<SendLog | null>;
   // delivery_events
   recordDeliveryEvent(ev: NewDeliveryEvent): Promise<DeliveryEvent>;
