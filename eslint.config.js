@@ -46,6 +46,30 @@ export default tseslint.config(
     },
   },
   {
+    // SRV-01 / T-01-04: server-only import guard scoped to src/**.
+    // Server-only packages (resend, better-sqlite3, csv-parse, pg) and any
+    // relative import reaching into server/ are forbidden in client code so
+    // secrets/Node-only code never leak into the public SPA bundle.
+    // server/ files legitimately import these deps and are NOT matched here.
+    files: ["src/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": ["error", {
+        paths: [
+          { name: "resend", message: "resend is server-only. Import it from server/ only." },
+          { name: "better-sqlite3", message: "better-sqlite3 is server-only. Import it from server/ only." },
+          { name: "csv-parse", message: "csv-parse is server-only. Import it from server/ only." },
+          { name: "pg", message: "pg is server-only. Import it from server/ only." },
+        ],
+        patterns: [
+          {
+            group: ["server/*", "../server/*", "../../server/*", "../../../server/*"],
+            message: "Importing from server/ is forbidden in src/ (server-only boundary).",
+          },
+        ],
+      }],
+    },
+  },
+  {
     files: ["**/*.html"],
     plugins: {
       "@html-eslint": htmlEslint,
