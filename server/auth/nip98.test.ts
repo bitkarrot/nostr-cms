@@ -245,6 +245,49 @@ describe('NIP-98 verification — 01-02-02 remaining reject paths (T-01-02)', ()
   });
 });
 
+describe('NIP-98 verification — 01-02-03 proxy URL reconstruction (T-01-03)', () => {
+  beforeEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('request signed against PUBLIC url succeeds (200) with X-Forwarded-* headers', async () => {
+    // This is the #1 bug risk: behind nginx, c.req.raw.url is the LOCAL proxied
+    // URL (http://localhost/api/email/admin/ping) but the SPA signed the PUBLIC
+    // url (https://relay.example.com/...). publicRequest(c) reconstructs the
+    // public URL from X-Forwarded-Proto + X-Forwarded-Host so NIP98.verify's
+    // u-tag check passes.
+    const app = buildApp(masterResolver);
+    const token = signToken(
+      buildTemplate(PUBLIC_URL, 'GET', Math.floor(Date.now() / 1000)),
+      MASTER_SK,
+    );
+    // app.request('/api/email/admin/ping') produces a LOCAL url
+    // (http://localhost/api/email/admin/ping) in c.req.raw.url. The forwarded
+    // headers make publicRequest reconstruct the PUBLIC url matching the u tag.
+    const res = await req(app, 'GET', '/api/email/admin/ping', {
+      headers: { authorization: `Nostr ${token}` },
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it('same request WITHOUT X-Forwarded-* headers fails (401) — reconstruction is necessary', async () => {
+    // Negative case: without the forwarded headers, publicRequest falls back to
+    // the local url (http://localhost/...), which does NOT match the u tag the
+    // SPA signed (https://relay.example.com/...). This proves the fix is
+    // necessary — without reconstruction every legit proxied request would 401.
+    const app = buildApp(masterResolver);
+    const token = signToken(
+      buildTemplate(PUBLIC_URL, 'GET', Math.floor(Date.now() / 1000)),
+      MASTER_SK,
+    );
+    const res = await app.request('/api/email/admin/ping', {
+      method: 'GET',
+      headers: { authorization: `Nostr ${token}` },
+    });
+    expect(res.status).toBe(401);
+  });
+});
+
 /** Compute the SHA-256 hex digest of a string (for the payload tag). */
 async function sha256Hex(text: string): Promise<string> {
   const buffer = new TextEncoder().encode(text);
