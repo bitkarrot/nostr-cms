@@ -144,6 +144,31 @@ describe('SqliteSubscriberRepository', () => {
     expect(await repo.countSubscribers('A', { segment: 'followers' })).toBe(2);
   });
 
+  it('segment filter escapes LIKE wildcards and quotes (WR-03)', async () => {
+    const repo = makeRepo();
+    // A segment name containing a LIKE wildcard (%) and a literal that would
+    // break the JSON-quote match if unescaped. Also a normal segment that the
+    // wildcard would over-match if % were not escaped.
+    await repo.insertSubscriber('A', {
+      site_id: 'A', email: 'wild@example.com', name: null, npub: null,
+      status: 'active', segment: ['a%b'], confirmed_at: null, bounced_at: null, complained_at: null,
+    });
+    await repo.insertSubscriber('A', {
+      site_id: 'A', email: 'normal@example.com', name: null, npub: null,
+      status: 'active', segment: ['axb'], confirmed_at: null, bounced_at: null, complained_at: null,
+    });
+    // Exact match on the literal "a%b" — should return only the wild subscriber.
+    const wild = await repo.listSubscribers('A', { segment: 'a%b' });
+    expect(wild).toHaveLength(1);
+    expect(wild[0].email).toBe('wild@example.com');
+    // The "axb" segment should NOT be matched by the "a%b" filter (wildcard escaped).
+    const xxb = await repo.listSubscribers('A', { segment: 'axb' });
+    expect(xxb).toHaveLength(1);
+    expect(xxb[0].email).toBe('normal@example.com');
+    // Count agrees.
+    expect(await repo.countSubscribers('A', { segment: 'a%b' })).toBe(1);
+  });
+
   it('enforces UNIQUE(site_id, email) on insert', async () => {
     const repo = makeRepo();
     await repo.insertSubscriber('A', {

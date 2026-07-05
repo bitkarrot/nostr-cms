@@ -205,8 +205,15 @@ export class SqliteSubscriberRepository implements SubscriberRepository {
     }
     if (opts.segment) {
       // segment stored as JSON array text — match the quoted segment name.
-      where.push('segment LIKE ?');
-      params.push(`%"${opts.segment}"%`);
+      // WR-03: escape LIKE metacharacters (% _ \) and the embedded JSON quote
+      // (") so a segment name containing them matches literally instead of
+      // acting as a wildcard or breaking the quote-delimited match. The value
+      // is still bound as a parameter (no SQL injection); this is a
+      // data-correctness fix. ESCAPE '\\' tells SQLite to honor the backslash
+      // as the escape character.
+      const esc = opts.segment.replace(/[%_"\\]/g, (c) => `\\${c}`);
+      where.push("segment LIKE ? ESCAPE '\\'");
+      params.push(`%"${esc}"%`);
     }
     let sql = `SELECT * FROM subscribers WHERE ${where.join(' AND ')} ORDER BY created_at DESC`;
     if (opts.limit !== undefined) {
@@ -225,8 +232,10 @@ export class SqliteSubscriberRepository implements SubscriberRepository {
       params.push(opts.status);
     }
     if (opts.segment) {
-      where.push('segment LIKE ?');
-      params.push(`%"${opts.segment}"%`);
+      // WR-03: escape LIKE metacharacters + embedded quote (see listSubscribers).
+      const esc = opts.segment.replace(/[%_"\\]/g, (c) => `\\${c}`);
+      where.push("segment LIKE ? ESCAPE '\\'");
+      params.push(`%"${esc}"%`);
     }
     const row = this.db.prepare(
       `SELECT COUNT(*) AS n FROM subscribers WHERE ${where.join(' AND ')}`,
