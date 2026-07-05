@@ -13,7 +13,7 @@ guard).
 | `EMAIL_PORT` | `3001` | Port the HTTP service listens on (D-01). nginx proxies `/api/email/*` to `127.0.0.1:${EMAIL_PORT}`. |
 | `EMAIL_DB_BACKEND` | `sqlite` | DB backend selector. `sqlite` (default, `better-sqlite3`) or `postgres` (additive, future). |
 | `EMAIL_DB_PATH` | `./email.db` (dev) / `/app/email.db` (prod) | SQLite database file path. The installer sets this in prod. |
-| `EMAIL_BACKUP_DIR` | `/app/backups` | Directory for daily online backups (`email.db.bak`). |
+| `EMAIL_BACKUP_DIR` | `/app/backups` | Directory for daily online backups (`email.db.YYYY-MM-DD.bak`). |
 | `MASTER_PUBKEY` | _(unset)_ | Server-side master pubkey (analog of `VITE_MASTER_PUBKEY`). If unset, resolved from `/.well-known/nostr.json`. |
 | `SWARM_BASE_URL` | _(unset)_ | Base URL for fetching `nostr.json` (e.g. `https://relay.example.com`). Falls back to deriving from `X-Forwarded-Host`. |
 
@@ -45,15 +45,17 @@ nginx proxies `/api/email/*` to the service — see `server/deploy/nginx.example
 
 Online backups use `better-sqlite3`'s native backup API (safe while the DB is
 in use — single-connection pattern). A daily cron produces
-`${EMAIL_BACKUP_DIR}/email.db.bak` with 7-day retention:
+`${EMAIL_BACKUP_DIR}/email.db.YYYY-MM-DD.bak` — each run stamps a distinct
+filename so backups are not silently overwritten, and files older than 7 days
+are pruned by mtime (true 7-day retention):
 
 ```cron
 0 3 * * * cd /app/nostr-cms && EMAIL_DB_PATH=/app/email.db EMAIL_BACKUP_DIR=/app/backups npm run server:backup
 ```
 
 (`npm run server:backup` runs `tsx server/db/backup.ts`, which opens the source
-DB, backs it up to the destination, and deletes `email.db.bak*` files older
-than 7 days by mtime.)
+DB, backs it up to a timestamped destination, and deletes `email.db.*.bak`
+files older than 7 days by mtime.)
 
 ## Architecture
 

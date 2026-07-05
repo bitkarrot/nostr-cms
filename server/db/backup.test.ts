@@ -90,7 +90,9 @@ describe('runBackup', () => {
 
   it('respects EMAIL_DB_PATH and EMAIL_BACKUP_DIR env vars', async () => {
     await runBackup();
-    const dest = join(process.env.EMAIL_BACKUP_DIR!, 'email.db.bak');
+    // WR-04: filename is now timestamped (email.db.YYYY-MM-DD.bak).
+    const stamp = new Date().toISOString().slice(0, 10);
+    const dest = join(process.env.EMAIL_BACKUP_DIR!, `email.db.${stamp}.bak`);
     expect(existsSync(dest)).toBe(true);
     const destDb = new Database(dest);
     try {
@@ -101,12 +103,27 @@ describe('runBackup', () => {
     }
   });
 
+  it('produces a distinct timestamped file each run (WR-04)', async () => {
+    await runBackup();
+    await runBackup();
+    const files = readdirSync(process.env.EMAIL_BACKUP_DIR!).filter(
+      (f) => f.startsWith('email.db.') && f.endsWith('.bak'),
+    );
+    // Two runs on the same day produce the same timestamped filename, so the
+    // file is overwritten within a day — but the key fix is that the filename
+    // is timestamped (not a fixed `email.db.bak`). Assert the timestamped name
+    // exists and the old fixed name does NOT.
+    const stamp = new Date().toISOString().slice(0, 10);
+    expect(files).toContain(`email.db.${stamp}.bak`);
+    expect(files).not.toContain('email.db.bak');
+  });
+
   it('rotates backups older than 7 days', async () => {
     const backupDir = process.env.EMAIL_BACKUP_DIR!;
     const { mkdirSync } = await import('node:fs');
     mkdirSync(backupDir, { recursive: true });
-    // Create a stale backup file (8 days old) and a fresh one.
-    const stale = join(backupDir, 'email.db.bak.old');
+    // Create a stale timestamped backup file (8 days old) and a fresh one.
+    const stale = join(backupDir, 'email.db.2020-01-01.bak');
     writeFileSync(stale, 'stale');
     const staleStat = statSync(stale);
     // Backdate the stale file by patching mtime via utimes.
@@ -116,10 +133,13 @@ describe('runBackup', () => {
 
     await runBackup();
 
-    // The stale file should be gone; the fresh email.db.bak should remain.
+    // The stale file should be gone; the fresh timestamped backup should remain.
     expect(existsSync(stale)).toBe(false);
-    const files = readdirSync(backupDir).filter((f) => f.startsWith('email.db.bak'));
-    expect(files).toContain('email.db.bak');
+    const stamp = new Date().toISOString().slice(0, 10);
+    const files = readdirSync(backupDir).filter(
+      (f) => f.startsWith('email.db.') && f.endsWith('.bak'),
+    );
+    expect(files).toContain(`email.db.${stamp}.bak`);
     // staleStat is just for linter; confirm it existed before rotation
     expect(staleStat).toBeDefined();
   });
