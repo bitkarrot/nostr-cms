@@ -40,12 +40,18 @@ export function nip98Auth(opts: {
       return c.json({ error: 'unauthorized' }, 401);
     }
 
-    const master = (await opts.masterResolver()).toLowerCase().trim();
+    let master: string;
+    try {
+      master = (await opts.masterResolver()).toLowerCase().trim();
+    } catch {
+      // WR-08: a throwing resolver (fetch reject, non-200, malformed JSON,
+      // unset SWARM_BASE_URL) must fail closed → 401, not 500.
+      return c.json({ error: 'unauthorized' }, 401);
+    }
     if (!master) {
       // Fail closed — no resolvable master means no admin access.
       return c.json({ error: 'unauthorized' }, 401);
     }
-
     if (event.pubkey.toLowerCase() !== master) {
       return c.json({ error: 'forbidden' }, 403);
     }

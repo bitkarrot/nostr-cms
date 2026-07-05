@@ -168,6 +168,20 @@ describe('NIP-98 verification — 01-02-01 accept/reject matrix (T-01-02)', () =
     });
     expect(res.status).toBe(401);
   });
+
+  it('fail-closed: throwing master resolver -> 401 (WR-08, not 500)', async () => {
+    // WR-08: a resolver that throws (fetch reject, non-200, malformed JSON,
+    // unset SWARM_BASE_URL) must produce 401, not an unhandled 500.
+    const app = buildApp(() => Promise.reject(new Error('nostr.json fetch failed')));
+    const token = signToken(
+      buildTemplate(PUBLIC_URL, 'GET', Math.floor(Date.now() / 1000)),
+      MASTER_SK,
+    );
+    const res = await req(app, 'GET', '/api/email/admin/ping', {
+      headers: { authorization: `Nostr ${token}` },
+    });
+    expect(res.status).toBe(401);
+  });
 });
 
 describe('NIP-98 verification — 01-02-02 remaining reject paths (T-01-02)', () => {
