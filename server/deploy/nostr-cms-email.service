@@ -1,0 +1,25 @@
+# nostr-cms email service — systemd unit template (SRV-04)
+#
+# Copy to /etc/systemd/system/nostr-cms-email.service and edit the paths/user
+# to match your deployment. See server/deploy/README.md for full instructions.
+#
+# This is the recommended process supervisor for a relay box already running
+# swarm as a long-lived process — systemd is the init system, no extra runtime
+# dependency (PM2/docker would add one). Survives reboots, captures logs to
+# journald, restarts on failure.
+
+[Unit]
+Description=nostr-cms email service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/app/nostr-cms
+EnvironmentFile=/app/nostr-cms/server/deploy/email.env
+ExecStart=/usr/bin/npx tsx server/index.ts
+Restart=on-failure
+RestartSec=5
+User=nostr-cms
+
+[Install]
+WantedBy=multi-user.target
