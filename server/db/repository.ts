@@ -83,7 +83,7 @@ export interface CountSubscribersOpts {
 }
 
 export type NewSubscriber = Omit<Subscriber, 'id' | 'created_at'>;
-export type NewToken = Omit<VerifyToken, 'id'>;
+export type NewToken = Omit<VerifyToken, 'id' | 'used'>;
 export type NewSendLog = Omit<SendLog, 'id'>;
 export type NewDeliveryEvent = Omit<DeliveryEvent, 'id'>;
 
