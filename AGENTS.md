@@ -37,6 +37,7 @@ All planning lives in `.planning/`:
 - Nostr relays are the content store for CMS content. Subscriber emails/PII must NEVER be stored on relays — they live only in the email service's SQLite/Postgres DB.
 - Secrets (Resend API key, DB credentials) are server-only; never `VITE_*`.
 - Don't break the existing Vercel static deploy or the swarm `/api` proxy. The email service is additive (`/api/email/*`), routed via a new nginx location block on self-hosted deploys.
+- Email module is opt-in at install time, default off. Gate email admin nav + public signup on `useEmailEnabled()` (reads `VITE_EMAIL_ENABLED` or `email_enabled` in swarm-config). Installers who don't want email don't start `npm run server` and see no email UI.
 
 ## Current milestone: Email Newsletter
 

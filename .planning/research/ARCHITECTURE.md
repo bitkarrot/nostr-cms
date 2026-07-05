@@ -104,8 +104,21 @@ Recommend shipping admin-initiated first; automatic trigger is a follow-up phase
 - Public routes (`/subscribe`, `/verify`, `/unsubscribe`, `/webhooks/resend`) — no NIP-98. Verify/unsub use signed single-use tokens. Resend webhook verifies Resend signature.
 - Admin routes — NIP-98 verified in Node (`server/auth/nip98.ts`, pure crypto, no swarm dependency) + check the signer is the master/owner pubkey. Master pubkey resolved from `VITE_MASTER_PUBKEY` (existing pattern) or by fetching `/.well-known/nostr.json` from swarm over HTTP and reading the `_` owner entry (matches the existing `useRemoteNostrJson` pattern in the SPA).
 
+## Install-time opt-out (email module is optional)
+
+The email module is **opt-in, default off** — not all nostr-cms installers want email. Two layers of gating:
+
+1. **Install-time (this section):** controls whether email exists at all.
+   - SPA: `VITE_EMAIL_ENABLED=true` (build-time override) or `email_enabled: true` in the `<meta name="swarm-config">` JSON (runtime, no rebuild) — same priority pattern as `masterPubkey` in `src/lib/relay.ts`. A `useEmailEnabled()` hook exposes the flag; email admin nav items and the public `SignupModule` gate on it. When false, no email UI renders and no email API calls are made.
+   - Server: the email server is a separate process (`npm run server`). An installer who doesn't want email simply doesn't start it — no DB provisioned, no nginx location block added.
+   - Installer: `install-meetup-space.sh` (in swarm) gets `--with-email` / `--without-email` (default `--without-email`), which writes the swarm-config `email_enabled` value and starts/not-starts the email server.
+
+2. **Runtime (CFG-04, separate):** once email is installed, the site admin can toggle the public signup module on/off from the admin UI. This is stored in the DB `settings` table. It does not affect whether the email server runs — only whether the public signup form is shown.
+
+The two toggles are layered: install-time decides existence; runtime decides signup visibility. An installer who opts out gets neither; an installer who opts in can still hide the signup form via CFG-04.
+
 ## Deployment
 
 - **Self-hosted (primary):** `npm run server` on the relay box. SQLite file at `/app/email.db` (or configured path) next to Badger. nginx adds `location /api/email/ { proxy_pass http://127.0.0.1:<port>; }`. One more long-lived process on a box already running swarm.
 - **Hosted/Vercel:** run the same Node service as a long-running process (Vercel doesn't run arbitrary long-lived Node, so this means a small VPS or a containerized deploy); set `EMAIL_DB_BACKEND=postgres` against the existing InsForge/Postgres. SQLite is not available on Vercel ephemeral FS — this is the honest constraint that makes SQLite the self-hosted default and Postgres the hosted path.
-- **swarm install script update:** `setup/install-meetup-space.sh` (lives in swarm repo) gets a one-line addition to also start the nostr-cms email server. That's a docs/config change in swarm, not a code merge.
+- **swarm install script update:** `setup/install-meetup-space.sh` (lives in swarm repo) gets a `--with-email` / `--without-email` flag (default `--without-email`) that writes the swarm-config `email_enabled` value and starts/not-starts the nostr-cms email server. That's a docs/config change in swarm, not a code merge.

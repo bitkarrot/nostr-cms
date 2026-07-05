@@ -13,6 +13,7 @@ Requirements for the Email Newsletter milestone. Each maps to roadmap phases bel
 - [ ] **SRV-02**: A `SubscriberRepository` interface exists with a SQLite implementation (`better-sqlite3`, WAL mode) and migrations for subscribers, settings, verify_tokens, send_log, delivery_events (all carrying `site_id`); Postgres is additive later behind the same interface (`EMAIL_DB_BACKEND` selects)
 - [ ] **SRV-03**: Admin endpoints verify NIP-98 signatures in Node (pure crypto) and require the signer be the site master/owner pubkey, resolved from `VITE_MASTER_PUBKEY` or by fetching `/.well-known/nostr.json` from swarm over HTTP
 - [ ] **SRV-04**: The email service runs as a long-running Node process on the relay box (self-hosted) with nginx routing `/api/email/*` to it, and is also deployable hosted with `EMAIL_DB_BACKEND=postgres`; swarm is not modified
+- [ ] **SRV-05**: The email module is opt-in at install time — default off. An installer who doesn't want email runs no email server process, provisions no DB, and sees no email admin nav or public signup UI. Gated by `VITE_EMAIL_ENABLED` (build-time override) or `email_enabled` in the `<meta name="swarm-config">` tag (runtime, no rebuild), following the existing config priority pattern
 
 ### Admin Email Configuration
 
@@ -80,6 +81,7 @@ Deferred to future release. Tracked but not in current roadmap.
 | SRV-02 | Phase 1 | Pending |
 | SRV-03 | Phase 1 | Pending |
 | SRV-04 | Phase 1 | Pending |
+| SRV-05 | Phase 1 | Pending |
 | CFG-01 | Phase 2 | Pending |
 | CFG-02 | Phase 2 | Pending |
 | CFG-03 | Phase 2 | Pending |
@@ -102,8 +104,8 @@ Deferred to future release. Tracked but not in current roadmap.
 | DGT-03 | Phase 6 | Pending |
 
 **Coverage:**
-- v1 requirements: 23 total
-- Mapped to phases: 23
+- v1 requirements: 24 total
+- Mapped to phases: 24
 - Unmapped: 0 ✓
 
 ---

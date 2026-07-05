@@ -82,3 +82,11 @@ Build the email layer as a **Node/TS service in a new `server/` folder inside th
 - `EMAIL_FROM_DOMAIN` — verified sending domain.
 - `NOSTR_JSON_URL` — where to fetch `nostr.json` for admin pubkey verification (defaults to the relay's `/.well-known/nostr.json`).
 - Rate limit + module toggle stored in the DB `settings` table, editable from admin UI (not env vars).
+
+## Install-time opt-out (email module is optional)
+
+Not all nostr-cms installers want email. The module is **opt-in, default off**:
+- **SPA gating:** `VITE_EMAIL_ENABLED=true` (build-time override) or `email_enabled: true` in the `<meta name="swarm-config">` JSON (runtime, no rebuild) — same priority pattern as `masterPubkey` in `src/lib/relay.ts`. A `useEmailEnabled()` hook exposes the flag; email admin nav items and the public `SignupModule` gate on it.
+- **Server gating:** the email server is a separate process (`npm run server`). An installer who doesn't want email simply doesn't start it. No DB is provisioned, no nginx location block is added.
+- **Installer flag:** `install-meetup-space.sh` (in swarm) gets `--with-email` / `--without-email` (default `--without-email`), which writes the swarm-config `email_enabled` value and starts/not-starts the email server. That's a docs/config change in swarm, not a code merge.
+- **Layered with runtime toggle (CFG-04):** install-time opt-out controls whether email exists at all; CFG-04 controls whether the public signup form is shown once email is installed. Both are needed.

@@ -4,7 +4,7 @@ status: planning
 progress:
   total_phases: 6
   completed_phases: 0
-  total_plans: 18
+  total_plans: 19
   completed_plans: 0
   percent: 0
 ---
@@ -58,6 +58,7 @@ Progress: [░░░░░░░░░░] 0%
 - Email content derives from CMS posts/Kind 1 notes (no separate newsletter editor)
 - Plebian Market reward sales deferred to a future milestone
 - Trigger model: admin-initiated send first (Phase 5); automatic kind-23 trigger deferred to v2
+- Email module is opt-in at install time, default off — `VITE_EMAIL_ENABLED` (build-time) or `email_enabled` in swarm-config meta tag (runtime, no rebuild); installer who doesn't want email runs no server process and sees no email UI. Layered with CFG-04 runtime toggle (signup visibility)
 
 ### Surprises
 

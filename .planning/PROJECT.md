@@ -68,6 +68,7 @@ Let a creator run a full community site (content + events + payments) entirely o
 - **Secrets**: SMTP/API keys and subscriber PII must never reach the client bundle or Nostr relays; they live server-side only.
 - **Rate limiting**: Admin-configurable, 5–5000 emails/minute range.
 - **Compatibility**: Must not break the existing production deploy model (static host + optional Go backend).
+- **Optional module**: Email is opt-in at install time, default off. Installers who don't want email run no email server, provision no DB, and see no email UI. Gated by `VITE_EMAIL_ENABLED` or `email_enabled` in swarm-config (runtime, no rebuild).
 
 ## Key Decisions
 
