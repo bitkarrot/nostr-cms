@@ -378,7 +378,7 @@ export class SqliteSubscriberRepository implements SubscriberRepository {
       entry.started_at,
       entry.completed_at,
     );
-    const row = this.db.prepare('SELECT * FROM send_log WHERE id = ?').get(id) as SendLogRow;
+    const row = this.db.prepare('SELECT * FROM send_log WHERE site_id = ? AND id = ?').get(entry.site_id, id) as SendLogRow;
     return rowToSendLog(row);
   }
 
@@ -395,7 +395,15 @@ export class SqliteSubscriberRepository implements SubscriberRepository {
     const sets: string[] = [];
     const params: unknown[] = [];
     for (const [key, value] of Object.entries(patch)) {
-      if (key === 'id' || key === 'site_id') continue;
+      // IN-07: reject primary key (`id`) and partition key (`site_id`) loudly
+      // for consistency with the WR-02 unknown-column rejection. Silently
+      // skipping these gave callers no feedback that the key was ignored and
+      // was inconsistent with the "reject unknown keys loudly" approach. Both
+      // keys are immutable identity columns and must never be mutated via a
+      // patch — a caller trying to do so almost certainly has a bug.
+      if (key === 'id' || key === 'site_id') {
+        throw new Error(`updateSendLog: column "${key}" is immutable and cannot be patched`);
+      }
       if (!ALLOWED_COLUMNS.has(key)) {
         throw new Error(`updateSendLog: unknown column "${key}"`);
       }
@@ -423,7 +431,7 @@ export class SqliteSubscriberRepository implements SubscriberRepository {
         (id, site_id, send_log_id, subscriber_id, event_type, recipient, timestamp)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
     ).run(id, ev.site_id, ev.send_log_id, ev.subscriber_id, ev.event_type, ev.recipient, ev.timestamp);
-    const row = this.db.prepare('SELECT * FROM delivery_events WHERE id = ?').get(id) as DeliveryEventRow;
+    const row = this.db.prepare('SELECT * FROM delivery_events WHERE site_id = ? AND id = ?').get(ev.site_id, id) as DeliveryEventRow;
     return rowToDeliveryEvent(row);
   }
 

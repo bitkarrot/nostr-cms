@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { existsSync, mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 
 import Database from 'better-sqlite3';
 
@@ -90,10 +90,13 @@ describe('runBackup', () => {
 
   it('respects EMAIL_DB_PATH and EMAIL_BACKUP_DIR env vars', async () => {
     await runBackup();
-    // WR-04: filename is now timestamped (email.db.YYYY-MM-DD.bak).
-    const stamp = new Date().toISOString().slice(0, 10);
-    const dest = join(process.env.EMAIL_BACKUP_DIR!, `email.db.${stamp}.bak`);
-    expect(existsSync(dest)).toBe(true);
+    // WR-04 + WR-09: filename is now timestamped with second-level granularity
+    // (email.db.YYYYMMDD-HHMMSS.bak). Match the prefix on the same date.
+    const files = readdirSync(process.env.EMAIL_BACKUP_DIR!).filter(
+      (f) => f.startsWith('email.db.') && f.endsWith('.bak'),
+    );
+    expect(files.length).toBe(1);
+    const dest = join(process.env.EMAIL_BACKUP_DIR!, files[0]);
     const destDb = new Database(dest);
     try {
       const count = destDb.prepare('SELECT COUNT(*) AS n FROM t').get() as { n: number };
@@ -103,18 +106,20 @@ describe('runBackup', () => {
     }
   });
 
-  it('produces a distinct timestamped file each run (WR-04)', async () => {
+  it('produces a distinct timestamped file each run (WR-04, WR-09)', async () => {
     await runBackup();
+    // Sleep >1s so the second run lands in a different second (timestamp
+    // granularity is second-level). Without this, two runs in the same
+    // second would produce the same filename.
+    await new Promise((r) => setTimeout(r, 1100));
     await runBackup();
     const files = readdirSync(process.env.EMAIL_BACKUP_DIR!).filter(
       (f) => f.startsWith('email.db.') && f.endsWith('.bak'),
     );
-    // Two runs on the same day produce the same timestamped filename, so the
-    // file is overwritten within a day — but the key fix is that the filename
-    // is timestamped (not a fixed `email.db.bak`). Assert the timestamped name
-    // exists and the old fixed name does NOT.
-    const stamp = new Date().toISOString().slice(0, 10);
-    expect(files).toContain(`email.db.${stamp}.bak`);
+    // WR-09: second-level granularity means two runs produce two distinct
+    // files (the day-level fix still overwrote same-day runs). Assert two
+    // distinct files exist and the old fixed name does NOT.
+    expect(files.length).toBe(2);
     expect(files).not.toContain('email.db.bak');
   });
 
@@ -125,7 +130,6 @@ describe('runBackup', () => {
     // Create a stale timestamped backup file (8 days old) and a fresh one.
     const stale = join(backupDir, 'email.db.2020-01-01.bak');
     writeFileSync(stale, 'stale');
-    const staleStat = statSync(stale);
     // Backdate the stale file by patching mtime via utimes.
     const oldTime = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
     const { utimesSync } = await import('node:fs');
@@ -135,13 +139,14 @@ describe('runBackup', () => {
 
     // The stale file should be gone; the fresh timestamped backup should remain.
     expect(existsSync(stale)).toBe(false);
-    const stamp = new Date().toISOString().slice(0, 10);
     const files = readdirSync(backupDir).filter(
       (f) => f.startsWith('email.db.') && f.endsWith('.bak'),
     );
-    expect(files).toContain(`email.db.${stamp}.bak`);
-    // staleStat is just for linter; confirm it existed before rotation
-    expect(staleStat).toBeDefined();
+    // WR-09: fresh backup uses second-level granularity — match by today's date prefix.
+    const today = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const datePrefix = `${today.getFullYear()}${pad(today.getMonth() + 1)}${pad(today.getDate())}`;
+    expect(files.some((f) => f.startsWith(`email.db.${datePrefix}-`))).toBe(true);
   });
 });
 

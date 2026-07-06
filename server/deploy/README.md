@@ -109,11 +109,38 @@ node -e "require('./package.json').scripts.server"
 
 ### Manual (on a real relay box — see VALIDATION.md)
 
-1. **nginx proxy:** `curl https://<relay-domain>/api/email/health` → expect
-   `{"ok":true}` (D-04: public, no auth, no DB details).
-2. **systemd crash-restart:** `kill -9 <pid>` the node process, then
-   `sleep 2 && systemctl status nostr-cms-email` → expect active (restarted
-   via `Restart=on-failure`).
+These three checks are deferred to deploy-time because they require a real
+relay box / running swarm and cannot be automated in CI. They are tracked as
+Phase 1 tech debt (item 7 in the v1.0 milestone audit) and **must be
+performed by the operator on first deploy** before declaring Phase 1 live.
+Tick each box when verified:
+
+- [ ] **1. nginx proxies `/api/email/health` (SRV-04, D-02/D-03):**
+      Start `npm run server` on the relay box, add the
+      `server/deploy/nginx.example.conf` snippet to the nginx server block
+      (substitute `EMAIL_PORT`), then:
+      ```bash
+      sudo nginx -t && sudo systemctl reload nginx
+      curl -sS https://<relay-domain>/api/email/health
+      # expect: {"ok":true}   (D-04: public, no auth, no DB details)
+      ```
+- [ ] **2. systemd crash-restart (SRV-04):** Install the systemd unit, start
+      it, then kill the node process and confirm systemd restarts it:
+      ```bash
+      sudo systemctl enable --now nostr-cms-email
+      PID=$(systemctl show -p MainPID --value nostr-cms-email)
+      kill -9 "$PID"
+      sleep 2 && systemctl status nostr-cms-email
+      # expect: active (running)  (restarted via Restart=on-failure)
+      ```
+- [ ] **3. `email_enabled` runtime toggle via swarm-config without rebuild
+      (SRV-05):** Build the SPA once, then toggle the swarm-config meta tag
+      without rebuilding:
+      ```bash
+      npm run build   # one-time build
+      # swarm-config with email_enabled: false → reload → no Email nav
+      # swarm-config with email_enabled: true  → reload (no rebuild) → Email nav appears
+      ```
 
 ## Notes
 

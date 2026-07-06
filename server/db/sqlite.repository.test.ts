@@ -318,6 +318,27 @@ describe('SqliteSubscriberRepository', () => {
     expect(found).not.toBeNull();
   });
 
+  it('updateSendLog rejects immutable id/site_id keys instead of silently skipping (IN-07)', async () => {
+    const repo = makeRepo();
+    const log = await repo.createSendLog({
+      site_id: 'A', post_event_id: 'evt-imm', subject: 'Hi', recipient_count: 5, sent_count: 0,
+      status: 'pending', started_at: new Date().toISOString(), completed_at: null,
+    });
+    // IN-07: id and site_id are immutable identity columns. Patching them
+    // must throw (loud rejection) rather than silently no-op, so a caller
+    // bug is surfaced instead of being masked.
+    await expect(
+      repo.updateSendLog('A', log.id, { id: 'forged', sent_count: 1 }),
+    ).rejects.toThrow(/column "id" is immutable/);
+    await expect(
+      repo.updateSendLog('A', log.id, { site_id: 'B', sent_count: 1 }),
+    ).rejects.toThrow(/column "site_id" is immutable/);
+    // The row must be unchanged (no partial mutation from the rejected patch).
+    const found = await repo.findSendLogByPostEventId('A', 'evt-imm');
+    expect(found).not.toBeNull();
+    expect(found!.sent_count).toBe(0);
+  });
+
   it('records delivery events', async () => {
     const repo = makeRepo();
     const sub = await repo.insertSubscriber('A', {

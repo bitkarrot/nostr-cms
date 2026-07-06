@@ -28,12 +28,18 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 export const DEFAULT_EMAIL_DB_PATH = './email.db';
 
 /**
- * Runs a backup of the email DB to `${EMAIL_BACKUP_DIR}/email.db.YYYY-MM-DD.bak`
+ * Runs a backup of the email DB to `${EMAIL_BACKUP_DIR}/email.db.YYYYMMDD-HHMMSS.bak`
  * (WR-04: each run produces a distinct timestamped file so backups are not
  * silently overwritten — the previous single-file approach made "7-day
  * retention" illusory). Reads `EMAIL_DB_PATH` (default `./email.db`) and
  * `EMAIL_BACKUP_DIR` (default `/app/backups`). Prunes `email.db.*.bak` files
  * older than 7 days by mtime after the backup completes.
+ *
+ * WR-09: timestamp granularity is second-level (`YYYYMMDD-HHMMSS`), not
+ * day-level. Day-level granularity silently overwrote same-day backups (a
+ * manual `npm run server:backup` after DB corruption would clobber the last
+ * good automated backup; an hourly cron would keep only one backup per day).
+ * Second-level granularity guarantees every run produces a distinct file.
  */
 export async function runBackup(): Promise<void> {
   const dbPath = process.env.EMAIL_DB_PATH || DEFAULT_EMAIL_DB_PATH;
@@ -42,21 +48,26 @@ export async function runBackup(): Promise<void> {
 
   const db = openDatabase(dbPath);
   try {
-    // WR-04: stamp the filename with the current date so each run produces a
-    // distinct file (the old fixed `email.db.bak` was overwritten every run,
-    // making the 7-day rotation a no-op).
-    const stamp = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    // WR-04 + WR-09: stamp the filename with second-level granularity so each
+    // run produces a distinct file (the old fixed `email.db.bak` was
+    // overwritten every run, making the 7-day rotation a no-op; day-level
+    // `YYYY-MM-DD` still overwrote same-day runs).
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const stamp =
+      `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}` +
+      `-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
     const dest = join(backupDir, `email.db.${stamp}.bak`);
     await backupDatabase(db, dest);
 
     // Rotate: delete email.db.*.bak files older than 7 days (by mtime).
-    const now = Date.now();
+    const nowMs = Date.now();
     for (const filename of readdirSync(backupDir)) {
       if (!filename.startsWith('email.db.') || !filename.endsWith('.bak')) continue;
       const filepath = join(backupDir, filename);
       try {
         const st = statSync(filepath);
-        if (now - st.mtimeMs > SEVEN_DAYS_MS) {
+        if (nowMs - st.mtimeMs > SEVEN_DAYS_MS) {
           unlinkSync(filepath);
         }
       } catch {

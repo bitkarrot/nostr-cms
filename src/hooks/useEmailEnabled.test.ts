@@ -83,7 +83,7 @@ describe('useEmailEnabled / getEmailEnabled', () => {
     expect(getEmailEnabled()).toBe(true);
   });
 
-  it('returns false when meta tag email_enabled is the string "TRUE" (WR-07 case-insensitive true)', async () => {
+  it('returns true when meta tag email_enabled is the string "TRUE" (WR-07 case-insensitive true)', async () => {
     setMetaConfig({ email_enabled: 'TRUE' });
     const { getEmailEnabled } = await loadModule();
     expect(getEmailEnabled()).toBe(true);
