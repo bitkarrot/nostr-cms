@@ -42,9 +42,11 @@ import { format } from 'date-fns';
 
 const X_ERROR_MESSAGES: Record<string, string> = {
   expired: 'The X authorization session expired. Please try connecting again.',
-  unconfigured: 'The server lost its X app configuration. Ask the site operator to check TWITTER_KEY.',
+  unconfigured: 'The server lost its X crossposting configuration. Ask the site operator to check XPOST_SERVICE_URL or TWITTER_KEY.',
   exchange: 'Could not complete the X authorization token exchange.',
   store: 'Authorization succeeded but the server failed to save the account.',
+  notify: 'X authorization succeeded but the relay could not record the link. Try connecting again.',
+  internal: 'The crossposting service hit an internal error. Try connecting again.',
 };
 
 export default function AdminCrosspost() {
@@ -164,13 +166,13 @@ export default function AdminCrosspost() {
           <CardContent className="pt-6 flex items-start gap-3 text-sm">
             <AlertTriangle className="h-5 w-5 mt-0.5 text-amber-500" />
             <div>
-              <p className="font-medium">X app credentials not configured</p>
+              <p className="font-medium">X crossposting not configured</p>
               <p className="text-muted-foreground">
-                The site operator needs to set <code>TWITTER_KEY</code> and{' '}
-                <code>TWITTER_KEY_SECRET</code> (X developer app consumer
-                credentials with Read&nbsp;+&nbsp;Write permissions and the
-                callback URI <code>https://&lt;host&gt;/api/x/auth/callback</code>)
-                before accounts can be linked.
+                The site operator needs to point the relay at a crossposting
+                service with <code>XPOST_SERVICE_URL</code>, or set{' '}
+                <code>TWITTER_KEY</code> and <code>TWITTER_KEY_SECRET</code>{' '}
+                (X developer app consumer credentials) to run the flow on the
+                relay itself.
               </p>
             </div>
           </CardContent>
